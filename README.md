@@ -71,11 +71,12 @@ Location: docs/
 
 Key documents:
 
-Document	Purpose
-workstation-spec.md	Defines the target workstation configuration
-inventory.md	Tracks installed software and environment details
-rebuild-process.md	Documents rebuild procedures and validation steps
-github-auth.md	GitHub authentication standards and setup
+| Document | Purpose |
+|----------|---------|
+| workstation-spec.md | Defines the target workstation configuration |
+| inventory.md | Tracks installed software and environment details |
+| rebuild-process.md | Documents rebuild procedures and validation steps |
+| github-auth.md | GitHub authentication standards and setup |
 
 ## Rebuild Philosophy
 
