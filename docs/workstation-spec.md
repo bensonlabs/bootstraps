@@ -38,7 +38,7 @@ No workstation should contain configuration that cannot be recreated from this r
 
 ## Core Development Tools
 
-###Source Control
+### Source Control
 
 #### Tool Purpose
 Git	Version control
