@@ -33,6 +33,13 @@ winget install --id Anthropic.Claude -e
 
 winget install --id Microsoft.Sysinternals -e
 
+# Script tools
+
+Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force
+Import-Module -Name PSScriptAnalyzer
+Get-Module PSScriptAnalyzer -ListAvailable
+Get-ScriptAnalyzerRule | Select-Object -First 5
+
 # WSL2
 
 winget install Microsoft.WSL
