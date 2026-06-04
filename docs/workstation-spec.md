@@ -1,8 +1,8 @@
-Workstation Specification
+# Workstation Specification
 
 Version: 1.0
 
-Purpose
+## Purpose
 
 This document defines the target state of the primary AI-assisted development workstation.
 
@@ -10,7 +10,7 @@ All bootstrap scripts, inventories, exports, and documentation in this repositor
 
 A workstation rebuild is considered successful when a clean installation can be configured to match this specification without relying on memory.
 
-Design Principles
+## Design Principles
 
 * Reproducible
 * Documented
@@ -28,22 +28,22 @@ No critical configuration should exist outside this repository.
 
 Primary operating system.
 
-Target platform:
+## Target platform:
 
 * Windows 11 Pro
 * Current release: 24H2 or later
 * Local administrator access
 
-Linux
+## Linux
 
 Secondary operating system.
 
-Target platform:
+### Target platform:
 
 * WSL2
 * Ubuntu LTS
 
-Purpose:
+### Purpose:
 
 * Linux development environment
 * AI tooling compatibility
