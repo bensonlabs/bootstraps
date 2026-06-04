@@ -182,4 +182,5 @@ Planned support:
 ## Revision History
 
 Version	Date	Notes
-1.0	2026-06-03	Initial workstation specification
+    1.0	2026-06-03	Initial workstation specification
+
