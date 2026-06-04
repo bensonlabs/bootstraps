@@ -1,8 +1,8 @@
-Workstation Specification
+# Workstation Specification
 
 Version: 1.0
 
-Purpose
+## Purpose
 
 This document defines the target state for the primary AI-assisted development workstation.
 
@@ -10,24 +10,20 @@ All bootstrap scripts, inventories, exports, and automation within this reposito
 
 If the workstation can be rebuilt from a clean installation to match this specification, the bootstrap process is considered successful.
 
-⸻
+## Host Operating System
 
-Host Operating System
-
-Primary Platform
+### Primary Platform
 
 * Windows 11 Pro
 * Current release: 24H2 or later
 * Local administrator access required
 
-Secondary Platform
+### Secondary Platform
 
 * WSL2 Ubuntu LTS
 * Serves as the Linux execution environment
 
-⸻
-
-Workstation Philosophy
+## Workstation Philosophy
 
 The workstation should be:
 
@@ -40,84 +36,76 @@ The workstation should be:
 
 No workstation should contain configuration that cannot be recreated from this repository.
 
-⸻
+## Core Development Tools
 
-Core Development Tools
+###Source Control
 
-Source Control
-
-Tool	Purpose
+#### Tool Purpose
 Git	Version control
 GitHub CLI	GitHub automation and authentication
 GitHub Desktop	Visual repository management
 
-Editor
+### Editor
 
-Tool	Purpose
+#### Tool Purpose
 Visual Studio Code	Primary editor and IDE
 
-Languages
+### Languages
 
-Tool	Purpose
+####Tool Purpose
 PowerShell 7	Windows automation
 Python	General scripting and development
 Node.js LTS	AI tooling and development ecosystem
 
-⸻
+## AI Toolchain
 
-AI Toolchain
+### Required
 
-Required
-
-Tool	Status
+#### Tool Status
 Claude Code	Required
 Codex CLI	Required
 Gemini CLI	Required
 
-Desktop Applications
+### Desktop Applications
 
-Tool	Purpose
+####Tool Purpose
 ChatGPT Desktop	Interactive AI assistance
 Claude Desktop	AI workflows and MCP support
 
-Principles
+## Principles
 
 * AI tools are considered core development dependencies.
 * AI tooling should be available in both Windows and WSL environments where practical.
 * Authentication methods should be documented and reproducible.
 
-⸻
-
-Windows Components
+## Windows Components
 
 Terminal
 
 * Windows Terminal
 * PowerShell 7 default profile
 
-Utilities
+## Utilities
 
 * PowerToys
 * Everything Search
 * Sysinternals Suite
 
-Package Management
+## Package Management
 
 * WinGet
 
-⸻
+## Linux Components
 
-Linux Components
-
-Distribution
+#### Distribution
 
 * Ubuntu LTS under WSL2
 
-Package Management
+#### Package Management
 
 * apt
 
-Core Packages
+#### Core Packages
 
 * git
 * curl
@@ -129,9 +117,7 @@ Core Packages
 * ripgrep
 * fzf
 
-⸻
-
-Container Platform
+### Container Platform
 
 Docker
 
@@ -139,30 +125,26 @@ Docker
 * Docker CLI available in Windows
 * Docker CLI available in WSL
 
-⸻
-
-Authentication Standards
+### Authentication Standards
 
 GitHub
 
-Preferred:
+#### Preferred:
 
 * SSH keys
 * GitHub CLI authentication
 
-Fallback:
+#### Fallback:
 
 * Personal Access Tokens
 
-SSH
+### SSH
 
 * One SSH key per machine
 * Private keys never copied between systems
 * Public keys registered in GitHub
 
-⸻
-
-Configuration Management
+## Configuration Management
 
 Configuration should be stored in version control whenever possible.
 
@@ -175,9 +157,7 @@ Examples include:
 * Git configuration
 * Bootstrap scripts
 
-⸻
-
-Validation Requirements
+## Validation Requirements
 
 A successful rebuild must provide:
 
@@ -190,9 +170,7 @@ A successful rebuild must provide:
 * WSL2 Ubuntu functionality
 * Docker functionality
 
-⸻
-
-Future Platforms
+## Future Platforms
 
 Planned support:
 
@@ -201,9 +179,7 @@ Planned support:
 * Cloud-hosted Linux environments
 * Additional AI tooling as required
 
-⸻
-
-Revision History
+## Revision History
 
 Version	Date	Notes
 1.0	2026-06-03	Initial workstation specification
