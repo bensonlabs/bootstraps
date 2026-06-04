@@ -19,6 +19,7 @@ A workstation rebuild is considered successful when a clean installation can be 
 * Cross-platform
 * Rebuildable
 * Disposable
+
 No critical configuration should exist outside this repository.
 
 ## **Host Platforms**
@@ -32,14 +33,15 @@ Target platform:
 * Windows 11 Pro
 * Current release: 24H2 or later
 * Local administrator access
-### **Linux**
 
+### **Linux**
 Secondary operating system.
 
 Target platform:
 
 * WSL2
 * Ubuntu LTS
+
 Purpose:
 
 * Linux development environment
@@ -67,27 +69,32 @@ Purpose:
 * Claude Code
 * Codex CLI
 * Gemini CLI
+
 ### **Desktop Applications**
 
 * ChatGPT Desktop
 * Claude Desktop
+
 ### **AI Principles**
 
 * AI tools are treated as core development dependencies.
 * AI tooling should be available in both Windows and WSL where practical.
 * Authentication methods should be documented and reproducible.
 * AI tooling should survive a complete workstation rebuild.
+
 ## **Windows Components**
 
 ### **Terminal**
 
 * Windows Terminal
 * PowerShell 7
+
 ### **Utilities**
 
 * PowerToys
 * Everything Search
 * Sysinternals Suite
+
 ### **Package Management**
 
 * WinGet
@@ -96,6 +103,7 @@ Purpose:
 ### **Package Management**
 
 * apt
+
 ### **Core Packages**
 
 * git
@@ -107,6 +115,7 @@ Purpose:
 * jq
 * ripgrep
 * fzf
+
 ## **Container Platform**
 
 ### **Docker**
@@ -116,6 +125,7 @@ Requirements:
 * Docker Desktop installed
 * Docker CLI available from Windows
 * Docker CLI available from WSL
+
 ## **Authentication Standards**
 
 ### **GitHub**
@@ -127,6 +137,7 @@ Preferred:
 Fallback:
 
 * Personal Access Tokens
+
 ### **SSH**
 
 Requirements:
@@ -134,6 +145,7 @@ Requirements:
 * One key pair per machine
 * Private keys never copied between machines
 * Public keys registered in GitHub
+
 ## **Configuration Management**
 
 The following configuration should be stored in version control whenever possible:
@@ -145,6 +157,7 @@ The following configuration should be stored in version control whenever possibl
 * Git configuration
 * Bootstrap scripts
 * Inventory scripts
+
 ## **Validation Requirements**
 
 A successful rebuild must provide:
@@ -157,6 +170,7 @@ A successful rebuild must provide:
 * Gemini CLI functionality
 * WSL2 Ubuntu functionality
 * Docker functionality
+
 ## **Future Platforms**
 
 Planned support:
@@ -164,6 +178,7 @@ Planned support:
 * macOS
 * Cloud-hosted Windows environments
 * Cloud-hosted Linux environments
+
 ## **Success Criteria**
 
 A new machine should be able to:
