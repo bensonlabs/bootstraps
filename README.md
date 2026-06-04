@@ -42,7 +42,7 @@ Contains:
 ### macOS (Planned)
 Bootstrap resources for macOS development environments will be added in a future phase.
 
-### fedora plasma workstation 
+### Fedora Workstation KDE Plasma (Planned)
 Bootstrap resources for fedora development environments will be added in a future phase.
 
 ## AI Tooling
