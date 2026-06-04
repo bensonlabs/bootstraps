@@ -39,7 +39,7 @@ Contains:
 * Package inventories
 * Linux-specific configuration
 
-### AI Tooling
+## AI Tooling
 
 Location: ai/
 
@@ -51,7 +51,7 @@ Supported tools:
 
 Each tool directory contains installation notes, configuration guidance, and workflow documentation.
 
-### Inventory and Exports
+## Inventory and Exports
 
 Location: exports/
 
@@ -65,7 +65,7 @@ This directory contains machine-generated exports and environment snapshots, inc
 
 These files provide a record of workstation state at specific points in time.
 
-### Documentation
+## Documentation
 
 Location: docs/
 
@@ -77,13 +77,13 @@ inventory.md	Tracks installed software and environment details
 rebuild-process.md	Documents rebuild procedures and validation steps
 github-auth.md	GitHub authentication standards and setup
 
-### Rebuild Philosophy
+## Rebuild Philosophy
 
 A successful bootstrap is one that can be used to destroy and recreate an environment without relying on memory.
 
 If a machine cannot be rebuilt from the contents of this repository, the repository is incomplete.
 
-Validation Process
+### Validation Process
 
 1. Build a clean environment
 2. Export configuration and inventories
@@ -94,7 +94,7 @@ Validation Process
 7. Document gaps
 8. Repeat
 
-Status
+## Status
 
 This repository is under active development and serves as the foundation for a reproducible AI-assisted development workstation.
 
