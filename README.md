@@ -94,6 +94,7 @@ If a machine cannot be rebuilt from the contents of this repository, the reposit
 7. Document gaps
 8. Repeat
 
+
 ## Status
 
 This repository is under active development and serves as the foundation for a reproducible AI-assisted development workstation.
