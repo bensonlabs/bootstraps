@@ -39,6 +39,12 @@ Contains:
 * Package inventories
 * Linux-specific configuration
 
+### macOS (Planned)
+Bootstrap resources for macOS development environments will be added in a future phase.
+
+### fedora plasma workstation 
+Bootstrap resources for fedora development environments will be added in a future phase.
+
 ## AI Tooling
 
 Location: ai/
