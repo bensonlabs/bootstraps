@@ -1,8 +1,8 @@
-Workstation Specification
+# # **Workstation Specification**
 
 Version: 1.0
 
-Purpose
+## **Purpose**
 
 This document defines the target state of the primary AI-assisted development workstation.
 
@@ -10,7 +10,7 @@ All bootstrap scripts, inventories, exports, and documentation in this repositor
 
 A workstation rebuild is considered successful when a clean installation can be configured to match this specification without relying on memory.
 
-Design Principles
+## **Design Principles**
 
 * Reproducible
 * Documented
@@ -19,12 +19,11 @@ Design Principles
 * Cross-platform
 * Rebuildable
 * Disposable
-
 No critical configuration should exist outside this repository.
 
-Host Platforms
+## **Host Platforms**
 
-Windows
+### **Windows**
 
 Primary operating system.
 
@@ -33,8 +32,7 @@ Target platform:
 * Windows 11 Pro
 * Current release: 24H2 or later
 * Local administrator access
-
-Linux
+### **Linux**
 
 Secondary operating system.
 
@@ -42,75 +40,63 @@ Target platform:
 
 * WSL2
 * Ubuntu LTS
-
 Purpose:
 
 * Linux development environment
 * AI tooling compatibility
 * Container workflows
+## **Core Development Tools**
 
-Core Development Tools
-
-Source Control
+### **Source Control**
 
 * Git
 * GitHub CLI
 * GitHub Desktop
-
-Editor
+### **Editor**
 
 * Visual Studio Code
-
-Languages
+### **Languages**
 
 * PowerShell 7
 * Python
 * Node.js LTS
+## **AI Toolchain**
 
-AI Toolchain
-
-Required
+### **Required**
 
 * Claude Code
 * Codex CLI
 * Gemini CLI
-
-Desktop Applications
+### **Desktop Applications**
 
 * ChatGPT Desktop
 * Claude Desktop
-
-AI Principles
+### **AI Principles**
 
 * AI tools are treated as core development dependencies.
 * AI tooling should be available in both Windows and WSL where practical.
 * Authentication methods should be documented and reproducible.
 * AI tooling should survive a complete workstation rebuild.
+## **Windows Components**
 
-Windows Components
-
-Terminal
+### **Terminal**
 
 * Windows Terminal
 * PowerShell 7
-
-Utilities
+### **Utilities**
 
 * PowerToys
 * Everything Search
 * Sysinternals Suite
-
-Package Management
+### **Package Management**
 
 * WinGet
+## **Linux Components**
 
-Linux Components
-
-Package Management
+### **Package Management**
 
 * apt
-
-Core Packages
+### **Core Packages**
 
 * git
 * curl
@@ -121,39 +107,34 @@ Core Packages
 * jq
 * ripgrep
 * fzf
+## **Container Platform**
 
-Container Platform
-
-Docker
+### **Docker**
 
 Requirements:
 
 * Docker Desktop installed
 * Docker CLI available from Windows
 * Docker CLI available from WSL
+## **Authentication Standards**
 
-Authentication Standards
-
-GitHub
+### **GitHub**
 
 Preferred:
 
 * SSH keys
 * GitHub CLI authentication
-
 Fallback:
 
 * Personal Access Tokens
-
-SSH
+### **SSH**
 
 Requirements:
 
 * One key pair per machine
 * Private keys never copied between machines
 * Public keys registered in GitHub
-
-Configuration Management
+## **Configuration Management**
 
 The following configuration should be stored in version control whenever possible:
 
@@ -164,8 +145,7 @@ The following configuration should be stored in version control whenever possibl
 * Git configuration
 * Bootstrap scripts
 * Inventory scripts
-
-Validation Requirements
+## **Validation Requirements**
 
 A successful rebuild must provide:
 
@@ -177,16 +157,14 @@ A successful rebuild must provide:
 * Gemini CLI functionality
 * WSL2 Ubuntu functionality
 * Docker functionality
-
-Future Platforms
+## **Future Platforms**
 
 Planned support:
 
 * macOS
 * Cloud-hosted Windows environments
 * Cloud-hosted Linux environments
-
-Success Criteria
+## **Success Criteria**
 
 A new machine should be able to:
 
@@ -197,11 +175,12 @@ A new machine should be able to:
 5. Restore configuration.
 6. Become development-ready.
 
+⠀
 If any step requires undocumented knowledge, the repository is incomplete.
 
-Revision History
+## **Revision History**
 
-Version 1.0
+### **Version 1.0**
 
 Date: 2026-06-03
 
