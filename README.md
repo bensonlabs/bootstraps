@@ -98,5 +98,3 @@ If a machine cannot be rebuilt from the contents of this repository, the reposit
 ## Status
 
 This repository is under active development and serves as the foundation for a reproducible AI-assisted development workstation.
-
-This version establishes the purpose of the repo without getting tied to today’s exact toolset. The philosophy section is especially important because it explains why the repository exists in the first place.
