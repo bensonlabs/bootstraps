@@ -1,6 +1,4 @@
-I’d keep the root README focused on mission and navigation. Let the detailed instructions live elsewhere.
-
-bootstraps
+# bootstraps
 
 A collection of reproducible workstation, development environment, and AI tooling bootstrap configurations.
 
@@ -8,7 +6,7 @@ The goal of this repository is simple: any supported environment should be rebui
 
 This repository serves as the source of truth for my personal development environments across macOS, Windows, WSL, and future platforms.
 
-Objectives
+## Objectives
 
 * Rebuild a workstation from scratch with minimal manual configuration
 * Capture environment configuration before it is forgotten
@@ -17,9 +15,9 @@ Objectives
 * Reduce configuration drift between machines
 * Provide a repeatable process for testing and validating rebuilds
 
-Current Platforms
+## Current Platforms
 
-Windows 11
+### Windows 11
 
 Location: windows/
 
@@ -31,7 +29,7 @@ Contains:
 * VS Code configuration
 * Bootstrap and installation scripts
 
-WSL2 Ubuntu
+### WSL2 Ubuntu
 
 Location: wsl2-ubuntu/
 
@@ -41,7 +39,7 @@ Contains:
 * Package inventories
 * Linux-specific configuration
 
-AI Tooling
+### AI Tooling
 
 Location: ai/
 
@@ -53,7 +51,7 @@ Supported tools:
 
 Each tool directory contains installation notes, configuration guidance, and workflow documentation.
 
-Inventory and Exports
+### Inventory and Exports
 
 Location: exports/
 
@@ -67,7 +65,7 @@ This directory contains machine-generated exports and environment snapshots, inc
 
 These files provide a record of workstation state at specific points in time.
 
-Documentation
+### Documentation
 
 Location: docs/
 
@@ -79,7 +77,7 @@ inventory.md	Tracks installed software and environment details
 rebuild-process.md	Documents rebuild procedures and validation steps
 github-auth.md	GitHub authentication standards and setup
 
-Rebuild Philosophy
+### Rebuild Philosophy
 
 A successful bootstrap is one that can be used to destroy and recreate an environment without relying on memory.
 
