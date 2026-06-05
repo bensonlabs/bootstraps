@@ -2,6 +2,8 @@
 # Scratch notes of things I've learned
 
 # Base system
+Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 winget install --id Microsoft.PowerShell -e
   - had to accept with Y
 winget install --id Microsoft.WindowsTerminal -e
@@ -32,21 +34,25 @@ winget install --id Docker.DockerDesktop -e
 
 winget install --id OpenAI.ChatGPT -e
   - No package found matching input criteria.
-  - tried: winget.exe install --id=9NT1R1C2HH7J --source=msstore --accept-package-agreements --accept-source-agreements –silent
+  - failed/tried: winget.exe install --id=9NT1R1C2HH7J --source=msstore --accept-package-agreements --accept-source-agreements –silent
     - https://help.openai.com/en/articles/10003026-windows-app-release-notes
     - went with (legit?) winget install -e --id lencx.ChatGPT 
 winget install --id Anthropic.Claude -e
 
 # Sysinternals
 
-winget install --id Microsoft.Sysinternals -e
+winget install --id=Microsoft.Sysinternals.Suite -e
+  - Path environment variable modified; restart your shell to use the new value.
+    - ran after it: $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
 # Script tools
 winget install --id Microsoft.PowerShell.PSScriptAnalyzer --source winget
-
+  - ran this: Install-Module -Name PSScriptAnalyzer -Force -SkipPublisherCheck -Scope AllUsers
+    - needs to press y
 # WSL2
 
-winget install Microsoft.WSL
+no: winget install Microsoft.WSL
+yes: wsl --install --no-launch
 
 # AI CLI Tools
 
