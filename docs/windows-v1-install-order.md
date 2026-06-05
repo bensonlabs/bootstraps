@@ -1,5 +1,6 @@
-# Base system
 
+```powershell
+# Base system
 winget install --id Microsoft.PowerShell -e
 winget install --id Microsoft.WindowsTerminal -e
 winget install --id Microsoft.PowerToys -e
@@ -59,3 +60,4 @@ docker --version
 claude --version
 codex --version
 gemini --version
+```
