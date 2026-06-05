@@ -1,6 +1,8 @@
 ```powershell
 # Scratch notes of things I've learned
 
+Set-ExecutionPolicy RemoteSigned -Scope Process -Force
+
 # Base system
 Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
 Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
@@ -27,16 +29,17 @@ winget install --id OpenJS.NodeJS.LTS -e
 winget install --id Microsoft.VisualStudioCode -e
 
 # Docker
-
-winget install --id Docker.DockerDesktop -e
+winget install --id Docker.DockerDesktop -e --accept-package-agreements --accept-source-agreements
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
 # AI Desktop apps
 
 winget install --id OpenAI.ChatGPT -e
   - No package found matching input criteria.
-  - failed/tried: winget.exe install --id=9NT1R1C2HH7J --source=msstore --accept-package-agreements --accept-source-agreements –silent
+  - I failed/tried: winget.exe install --id=9NT1R1C2HH7J --source=msstore --accept-package-agreements --accept-source-agreements –silent
     - https://help.openai.com/en/articles/10003026-windows-app-release-notes
-    - went with (legit?) winget install -e --id lencx.ChatGPT 
+    - went with winget install -e --id lencx.ChatGPT
+      - is this safe/legitimate?
 winget install --id Anthropic.Claude -e
 
 # Sysinternals
@@ -51,15 +54,18 @@ winget install --id Microsoft.PowerShell.PSScriptAnalyzer --source winget
     - needs to press y
 # WSL2
 
-no: winget install Microsoft.WSL
+  #no: winget install Microsoft.WSL
 yes: wsl --install --no-launch
 
 # AI CLI Tools
 
-#winget install Anthropic.ClaudeCode
 winget install --id=Anthropic.ClaudeCode -e
 winget install --id=OpenAI.Codex -e
 npm install -g @openai/codex
+
+winget install --id OpenJS.NodeJS -e --accept-package-agreements --accept-source-agreements
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+
 npm install -g @google/gemini-cli
 
 # Verification
