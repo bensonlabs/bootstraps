@@ -1,3 +1,4 @@
+```powershell
 # Scratch notes of things I've learned
 
 # Base system
@@ -64,3 +65,4 @@ docker --version
 claude --version
 codex --version
 gemini --version
+```
