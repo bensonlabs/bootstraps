@@ -45,11 +45,19 @@ Contains:
 
 Bootstrap script available: scripts/bootstrap_macOS.sh
 
+Contains:
+
+* A macOS bootstrap entrypoint for clean-install setup automation
+
 macOS currently has bootstrap automation in scripts/ and does not yet have the same top-level configuration/documentation depth as Windows and WSL2 Ubuntu.
 
 ### Fedora Workstation KDE Plasma
 
 Bootstrap script available: scripts/bootstrap_fedora.sh
+
+Contains:
+
+* A Fedora bootstrap entrypoint for clean-install setup automation
 
 Fedora currently has bootstrap automation in scripts/ and does not yet have the same top-level configuration/documentation depth as Windows and WSL2 Ubuntu.
 
