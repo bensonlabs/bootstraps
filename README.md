@@ -17,7 +17,7 @@ This repository serves as the source of truth for my personal development enviro
 
 ## Current Platforms
 
-Windows and WSL2 Ubuntu currently have dedicated top-level directories with platform-specific configuration and documentation. Additional platform bootstrap automation currently lives in scripts/.
+Windows and WSL2 Ubuntu currently have dedicated top-level directories with platform-specific configuration and documentation. Other platforms currently use script-first bootstrap automation in scripts/.
 
 ### Windows 11
 
@@ -49,7 +49,7 @@ Contains:
 
 * A macOS bootstrap entrypoint for clean-install setup automation
 
-macOS currently has bootstrap automation in scripts/ and does not yet have the same top-level configuration/documentation depth as Windows and WSL2 Ubuntu.
+Bootstrap automation for macOS currently lives in scripts/ and does not yet have the same top-level configuration/documentation depth as Windows and WSL2 Ubuntu.
 
 ### Fedora Workstation KDE Plasma
 
@@ -59,7 +59,7 @@ Contains:
 
 * A Fedora bootstrap entrypoint for clean-install setup automation
 
-Fedora currently has bootstrap automation in scripts/ and does not yet have the same top-level configuration/documentation depth as Windows and WSL2 Ubuntu.
+Fedora currently follows the same script-first structure and does not yet have the same top-level configuration/documentation depth as Windows and WSL2 Ubuntu.
 
 ## AI Tooling
 
