@@ -4,7 +4,7 @@ A collection of reproducible workstation, development environment, and AI toolin
 
 The goal of this repository is simple: any supported environment should be rebuildable from a clean installation using documented procedures, exported configuration, and automation scripts stored here.
 
-This repository serves as the source of truth for my personal development environments across macOS, Windows, WSL, and future platforms.
+This repository serves as the source of truth for my personal development environments across Windows, WSL, and additional platforms supported through shared bootstrap scripts.
 
 ## Objectives
 
@@ -16,6 +16,8 @@ This repository serves as the source of truth for my personal development enviro
 * Provide a repeatable process for testing and validating rebuilds
 
 ## Current Platforms
+
+Windows and WSL2 Ubuntu currently have dedicated top-level directories with platform-specific configuration and documentation. Additional platform bootstrap automation currently lives in scripts/.
 
 ### Windows 11
 
@@ -39,11 +41,17 @@ Contains:
 * Package inventories
 * Linux-specific configuration
 
-### macOS (Planned)
-Bootstrap resources for macOS development environments will be added in a future phase.
+### macOS
 
-### Fedora Workstation KDE Plasma (Planned)
-Bootstrap resources for fedora development environments will be added in a future phase.
+Bootstrap script available: scripts/bootstrap_macOS.sh
+
+macOS currently has bootstrap automation in scripts/ and does not yet have the same top-level configuration/documentation depth as Windows and WSL2 Ubuntu.
+
+### Fedora Workstation KDE Plasma
+
+Bootstrap script available: scripts/bootstrap_fedora.sh
+
+Fedora currently has bootstrap automation in scripts/ and does not yet have the same top-level configuration/documentation depth as Windows and WSL2 Ubuntu.
 
 ## AI Tooling
 

@@ -45,18 +45,24 @@ Purpose:
 
 - Generate reusable configuration files
 - Create machine snapshots
-- Support future bootstrap automation
+- Support bootstrap automation
 
 ### Bootstrap
 
-Future scripts will automate workstation setup from a clean installation.
+Scripts that automate workstation setup from a clean installation.
 
-Examples:
+Current scripts:
 
-- Windows workstation bootstrap
-- WSL Ubuntu bootstrap
-- AI tool installation
-- Configuration restoration
+- bootstrap_windows.ps1
+- bootstrap_ubuntu.sh
+- bootstrap_macOS.sh
+- bootstrap_fedora.sh
+
+Purpose:
+
+- Bootstrap supported environments from a clean install
+- Reduce manual workstation setup steps
+- Provide repeatable automation across platforms
 
 ## Usage
 
