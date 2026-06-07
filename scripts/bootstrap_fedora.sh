@@ -36,7 +36,8 @@ gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 EOF
 
 # 2. Setup Flatpak & Flathub (Crucial for desktop applications on Fedora KDE)
-flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+sudo flatpak update
 
 # Install GUI Apps via Flatpak
 flatpak install flathub com.github.Donadigo.Edict -y       # Everything alternative (FSearch)
