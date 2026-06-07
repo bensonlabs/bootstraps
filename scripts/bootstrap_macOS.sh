@@ -1,113 +1,89 @@
-#!/usr/bin/env zsh
-# ==============================================================================
-# MASTER UNATTENDED AI DEVELOPMENT ENVIRONMENT BOOTSTRAP - MACOS TAHOE (v26)
-# ==============================================================================
-set -e # Terminate immediately if any individual pipeline fails
+#!/usr/bin/env bash
 
-echo "=============================================================================="
-echo " STAGE 1: XCODE TOOLS & HOMEBREW DEPLOYMENT"
-echo "=============================================================================="
+# ==============================================================================
+# bootstrap_macOS.sh
+# Designed to be run remotely via:
+# bash <(curl -fsSL https://raw.githubusercontent.com/bensonlabs/bootstraps/main/scripts/bootstrap_macOS.sh)
+# ==============================================================================
 
-# Core compilation requirement checking
-if ! xcode-select -p &>/dev/null; then
-    echo "Xcode Command Line Tools missing. Triggering system framework install..."
-    xcode-select --install
-    echo "------------------------------------------------------------------------"
-    echo "IMPORTANT: Complete the visual Apple installer prompt overlay."
-    echo "Once complete, press ANY KEY in this terminal window to resume bootstrap..."
-    echo "------------------------------------------------------------------------"
-    read -n 1 -s -r
+# Exit immediately if a command exits with a non-zero status
+set -e
+
+echo "🚀 Starting remote macOS Bootstrap Script..."
+
+# ------------------------------------------------------------------------------
+# 1. Ensure Homebrew is Installed and Loaded in the Current Session
+# ------------------------------------------------------------------------------
+if ! command -v brew &> /dev/null; then
+    echo "🍺 Homebrew not found. Installing..."
+    # Using env to bypass interactive prompts where possible
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 fi
 
-# Unattended Homebrew installation setup
-if ! type -p brew >/dev/null; then
-    echo "Installing Homebrew package ecosystem..."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-fi
-
-# Dynamically patch paths for the remaining active script steps
+# Dynamically load brew environment variables so the rest of THIS remote session can use it
 if [ -f /opt/homebrew/bin/brew ]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
-else
+elif [ -f /usr/local/bin/brew ]; then
     eval "$(/usr/local/bin/brew shellenv)"
 fi
 
-# Suppress analytic reporting pings for optimized deployment execution
-export HOMEBREW_NO_ANALYTICS=1
-brew update
+echo "🍺 Homebrew is ready."
 
-echo "=============================================================================="
-echo " STAGE 2: SYSTEM TOOLING, RUNTIMES & GIT ENGINE"
-echo "=============================================================================="
-# Install core platform binaries and the explicit Python 3.13 landscape
-brew install git gh coreutils htop node python@3.13 uv
+# ------------------------------------------------------------------------------
+# 2. Core CLI Tools
+# ------------------------------------------------------------------------------
+echo "📦 Installing core CLI tools..."
+cli_tools=(git node ripgrep zsh-completions)
 
-# Configure structural Git speed optimizations
-git config --global core.fscache true
-git config --global core.preloadindex true
-git config --global gc.auto 256
-
-echo "=============================================================================="
-echo " STAGE 3: APPLICATION DESKTOP CASKS & LOCAL AI CORE"
-echo "=============================================================================="
-# Desktop development targets and AI application frameworks
-brew install --cask visual-studio-code
-brew install --cask docker                 # Container landscape hypervisor
-brew install --cask claude                 # Official Anthropic app shell
-brew install --cask chatgpt                # Official OpenAI native desktop app
-brew install --cask alfred                 # Core local index search matching 'Everything'
-brew install --cask ollama                 # Hardware-optimized GGUF local LLM runner
-
-echo "=============================================================================="
-echo " STAGE 4: OMLX & MLX DEPLOYMENT ARCHITECTURE"
-echo "=============================================================================="
-echo "Deploying oMLX core via Homebrew taps..."
-brew tap jundot/omlx https://github.com/jundot/omlx
-brew install omlx
-
-# Optional: Add Model Context Protocol (MCP) support natively into the oMLX layer
-/opt/homebrew/opt/omlx/libexec/bin/pip install mcp --quiet || echo "Skipping standalone oMLX-MCP bind step."
-
-echo "=============================================================================="
-echo " STAGE 5: CLOUD & LOCAL AI CLI TOOLING EMISSION"
-echo "=============================================================================="
-# Global deployment of structural Node-based AI terminals
-sudo npm install -g @anthropic-ai/claude-code @openai/codex @google/gemini-cli one-file-context
-
-# Use uv to guarantee global Python management frameworks are isolated safely
-uv tool install shell-gpt --force
-
-echo "=============================================================================="
-echo " STAGE 6: SHELL RUNTIME PATH & ENVIRONMENT SYNC"
-echo "=============================================================================="
-PROFILE_FILE="$HOME/.zshrc"
-[ ! -f "$PROFILE_FILE" ] && touch "$PROFILE_FILE"
-
-# Permanently bind the dynamic ecosystem binaries into the native Mac terminal profiles
-if ! grep -q "shellenv" "$PROFILE_FILE"; then
-    echo "Injecting operational variables into $PROFILE_FILE..."
-    if [ -f /opt/homebrew/bin/brew ]; then
-        echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$PROFILE_FILE"
-    >> "$PROFILE_FILE"
+for tool in "${cli_tools[@]}"; do
+    if brew list "$tool" &> /dev/null; then
+        echo "   -> $tool is already installed. Skipping."
     else
-        echo 'eval "$(/usr/local/bin/brew shellenv)"' >> "$PROFILE_FILE"
+        echo "   -> Installing $tool..."
+        brew install "$tool"
     fi
+done
+
+# ------------------------------------------------------------------------------
+# 3. GUI Applications (Casks)
+# ------------------------------------------------------------------------------
+echo "🖥️ Installing GUI Applications..."
+casks=(visual-studio-code iterm2)
+
+for cask in "${casks[@]}"; do
+    echo "   -> Installing $cask..."
+    brew install --cask --force "$cask"
+done
+
+# Force Claude to bypass "App already exists" errors
+echo "   -> Overtaking/Installing Claude.app cleanly..."
+brew install --cask --force claude
+
+# ------------------------------------------------------------------------------
+# 4. OpenAI Codex CLI Installation
+# ------------------------------------------------------------------------------
+echo "🤖 Installing OpenAI Codex CLI..."
+if ! command -v codex &> /dev/null; then
+    echo "   -> Executing non-interactive Codex installer..."
+    # Passing the non-interactive flag explicitly to prevent script hangs over curl pipe
+    curl -fsSL https://chatgpt.com/codex/install.sh | env CODEX_NON_INTERACTIVE=1 sh
+else
+    echo "   -> Codex CLI is already installed."
 fi
 
-echo "=============================================================================="
-echo " STAGE 7: PRODUCTION SUITE SYSTEM VERIFICATION"
-echo "=============================================================================="
-echo -e "\n--- VERIFYING MACOS TAHOE ENGINE STACK ---"
-sw_vers
-git --version
-gh --version
-python3 --version
-node --version
-uv --version
-brew --version
-omlx --version
-npm list -g --depth=0
-echo "------------------------------------------"
+# ------------------------------------------------------------------------------
+# 5. macOS System Configuration
+# ------------------------------------------------------------------------------
+echo "⚙️ Configuring macOS system defaults..."
+defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
+defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode2 -bool true
+defaults write com.apple.finder AppleShowAllFiles -bool true
+defaults write com.apple.finder ShowPathbar -bool true
 
-echo "Bootstrap complete! Launch Docker and Ollama from your Applications grid to finish setup."
-echo "Execute 'source ~/.zshrc' to cleanly initialize all paths in your current terminal pane."
+# Restart Finder safely
+killall Finder &> /dev/null || true
+
+# ------------------------------------------------------------------------------
+# Wrap Up
+# ------------------------------------------------------------------------------
+echo "🎉 Remote Bootstrap complete! Please restart your terminal window or run 'exec zsh' to refresh your environment."
