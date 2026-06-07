@@ -39,7 +39,7 @@ cli_tools=(
     uv
     ripgrep
     bat
-    tree            # Added: Directory hierarchy visualization tool
+    tree
     htop
     starship
     fish
@@ -65,7 +65,9 @@ casks=(
     visual-studio-code
     iterm2
     github
-    caffeine        # Added: Anti-sleep utility
+    caffeine
+    obsidian
+    tailscale
 )
 
 for cask in "${casks[@]}"; do
