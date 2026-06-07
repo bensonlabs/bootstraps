@@ -30,8 +30,20 @@ winget install --id Microsoft.PowerShell -e --accept-package-agreements --accept
 # Install Windows Terminal & Utilities
 winget install --id Microsoft.WindowsTerminal -e --accept-package-agreements --accept-source-agreements
 
-# Installs PowerToys completely invisibly, bypassing the WiX installer UI and licensing prompts
-winget install --id Microsoft.PowerToys -e --accept-package-agreements --accept-source-agreements --override "--silent --no_start_pt"
+# Installs PowerToys, bypasses winget completely to force a 100% silent, unattended PowerToys install
+Write-Host "Downloading and installing PowerToys silently..." -ForegroundColor Cyan
+$ptUrl = "https://github.com/microsoft/PowerToys/releases/download/v0.99.1/PowerToysUserSetup-0.99.1-x64.exe"
+$ptPath = "$env:TEMP\PowerToysUserSetup.exe"
+
+# Pull down the true executable directly from GitHub
+Invoke-WebRequest -Uri $ptUrl -OutFile $ptPath
+
+# Execute the WiX bootstrapper silently with standard quiet switches
+Start-Process -FilePath $ptPath -ArgumentList "/quiet /install /norestart" -Wait
+
+# Clean up the installer file afterward
+Remove-Item -Path $ptPath -Force
+
 
 # Install helpful tools
 winget install --id voidtools.Everything -e --accept-package-agreements --accept-source-agreements
