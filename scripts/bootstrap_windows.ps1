@@ -29,8 +29,9 @@ winget install --id Microsoft.PowerShell -e --accept-package-agreements --accept
 
 # Install Windows Terminal & Utilities
 winget install --id Microsoft.WindowsTerminal -e --accept-package-agreements --accept-source-agreements
-# Installs PowerToys silently and completely blocks the first-run welcome splash screen
-winget install --id Microsoft.PowerToys -e --accept-package-agreements --accept-source-agreements --override "--silent --no_start_menu_shortcut --no_welcome" 
+
+# Installs PowerToys silently into the User profile scope to completely bypass UAC/Admin confirmation popups
+winget install --id Microsoft.PowerToys -e --scope user --accept-package-agreements --accept-source-agreements --override "--silent --no_start_menu_shortcut --no_welcome"
 winget install --id voidtools.Everything -e --accept-package-agreements --accept-source-agreements
 
 # Sysinternals Suite
