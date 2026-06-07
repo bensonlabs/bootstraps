@@ -1,23 +1,27 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MASTER UNATTENDED AI DEVELOPMENT ENVIRONMENT BOOTSTRAP - FEDORA WORKSTATION (KDE)
+# UNATTENDED AI DEVELOPMENT ENVIRONMENT BOOTSTRAP - FEDORA (DNF5 / KDE)
 # ==============================================================================
-set -e # Exit immediately if a command exits with a non-zero status
+set -e # Terminate immediately if any individual pipeline fails
 
 echo "=============================================================================="
 echo " STAGE 1: SYSTEM UPDATES & OPTIMIZATIONS"
 echo "=============================================================================="
-# Optimize DNF performance (Fastest mirror, parallel downloads)
-echo -e "[main]\nfastestmirror=True\nmax_parallel_downloads=10\ndefaultyes=True" | sudo tee -a /etc/dnf/dnf.conf
+# Optimize DNF5 parameters for maximum throughput speed
+sudo tee /etc/dnf/dnf.conf << 'EOF'
+[main]
+fastestmirror=True
+max_parallel_downloads=10
+defaultyes=True
+EOF
 
-# Fully update the system
-sudo dnf upgrade --refresh -y
+sudo dnf5 upgrade -y
 
-# Install Essential Utilities & Build Tools
+# Install Essential Utilities & Build Tools using proper DNF5 canonical group ID
 sudo dnf5 group install development-tools -y
-sudo dnf5 install -y curl wget git gh p7zip p7zip-plugins htop util-linux-user
+sudo dnf5 install -y curl wget git gh p7zip p7zip-plugins htop util-linux-user nodejs python3-pip
 
-# Configure Git Performance Overrides
+# Configure structural Git speed optimizations
 git config --global core.fscache true
 git config --global core.preloadindex true
 git config --global gc.auto 256
@@ -25,7 +29,10 @@ git config --global gc.auto 256
 echo "=============================================================================="
 echo " STAGE 2: APPLICATION RUNTIMES & REPOSITORIES"
 echo "=============================================================================="
-# 1. Install VS Code Repo and Package
+# Clear out any stale or broken VS Code repository variations
+sudo rm -f /etc/yum.repos.d/vscode.repo
+
+# Explicitly write clean newlines into the VS Code repository layer
 sudo tee /etc/yum.repos.d/vscode.repo << 'EOF'
 [code]
 name=Visual Studio Code
@@ -35,47 +42,49 @@ gpgcheck=1
 gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 EOF
 
-# 2. Setup Flatpak & Flathub (Crucial for desktop applications on Fedora KDE)
+sudo dnf5 check-update || true
+sudo dnf5 install code -y
+
+# Configure Flathub Core Repository using root privileges
 sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-sudo flatpak update
 
-# Install GUI Apps via Flatpak
-flatpak install flathub com.github.Donadigo.Edict -y       # Everything alternative (FSearch)
-flatpak install flathub com.anthropic.Claude -y           # Anthropic Claude Desktop
-flatpak install flathub com.openai.ChatGPT -y            # OpenAI ChatGPT Desktop
+# Hardened Flatpak validation block (easily allows you to add future developer Flatpaks)
+DEVELOPER_FLATPAKS=(
+    "org.gimp.GIMP" # Left as an example; remove or swap out as needed!
+)
 
-# 3. Install Runtimes (Python 3.13 & Node.js LTS via Fedora Repos)
-sudo dnf install -y python3.13 python3.13-pip python3.13-devel nodejs npm
-
-echo "=============================================================================="
-echo " STAGE 3: CONTAINERIZATION (DOCKER CE)"
-echo "=============================================================================="
-# Add official Docker Repository
-sudo dnf config-manager addrepo --url https://download.docker.com/linux/fedora/docker-ce.repo
-sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-# Enable and start Docker system service
-sudo systemctl enable --now docker
-
-# Add current non-root user to the docker group (takes effect after log out/in)
-sudo usermod -aG docker $USER
+echo "Deploying system flatpaks..."
+for app in "${DEVELOPER_FLATPAKS[@]}"; do
+    # Adding || true guarantees individual flatpak dropouts won't kill the script execution
+    sudo flatpak install flathub "$app" -y || echo "Warning: Failed to install $app, skipping..."
+done
 
 echo "=============================================================================="
-echo " STAGE 4: GLOBAL AI CLI TOOLS (NPM)"
+echo " STAGE 3: LOCAL AI ENGINE DEPLOYMENT (OLLAMA)"
 echo "=============================================================================="
-# Install the exact matching global AI CLI packages
+echo "Downloading and provisioning bare-metal Linux Ollama subsystem..."
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Enable and start the systemd service so Ollama boots with the machine
+sudo systemctl enable --now ollama
+
+echo "=============================================================================="
+echo " STAGE 4: CLOUD AI CLI TOOLING EMISSION"
+echo "=============================================================================="
+# Global deployment of structural Node-based AI developer runtimes
 sudo npm install -g @anthropic-ai/claude-code @openai/codex @google/gemini-cli one-file-context
 
 echo "=============================================================================="
-echo " STAGE 5: SYSTEM VERIFICATION"
+echo " STAGE 5: SYSTEM PRODUCTION VERIFICATION"
 echo "=============================================================================="
-echo -e "\n--- VERIFYING FEDORA WORKSTATION STACK ---"
+echo -e "\n--- VERIFYING FEDORA WORKSTATION ENGINE STACK ---"
+cat /etc/fedora-release
 git --version
 gh --version
-python3.13 --version
 node --version
-docker --version
-sudo npm list -g --depth=0
-echo "------------------------------------------"
+npm list -g --depth=0
+code --version | head -n 1
+ollama --version
+echo "------------------------------------------------"
 
-echo "Bootstrap complete! Please log out and back in, or reboot your laptop to apply user group changes."
+echo "Bootstrap complete! Pull down an open-source model using 'ollama run llama3' to start coding."
