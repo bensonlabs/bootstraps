@@ -2,7 +2,7 @@
 # ==============================================================================
 # UNATTENDED AI DEVELOPMENT ENVIRONMENT BOOTSTRAP - FEDORA (DNF5 / KDE)
 # ==============================================================================
-set -e # Terminate immediately if any individual pipeline fails
+set -euo pipefail # Hardened error handling: exit on error, unset vars, or pipe drops
 
 echo "=============================================================================="
 echo " STAGE 1: SYSTEM UPDATES & OPTIMIZATIONS"
@@ -17,9 +17,9 @@ EOF
 
 sudo dnf5 upgrade -y
 
-# Install Essential Utilities & Build Tools using proper DNF5 canonical group ID
+# Install Essential Utilities, Build Tools & System Information fetcher
 sudo dnf5 group install development-tools -y
-sudo dnf5 install -y curl wget git gh p7zip p7zip-plugins htop util-linux-user nodejs python3-pip
+sudo dnf5 install -y curl wget git gh p7zip p7zip-plugins htop util-linux-user nodejs python3-pip fastfetch
 
 # Configure structural Git speed optimizations
 git config --global core.fscache true
@@ -29,7 +29,7 @@ git config --global gc.auto 256
 echo "=============================================================================="
 echo " STAGE 2: APPLICATION RUNTIMES & REPOSITORIES"
 echo "=============================================================================="
-# Clear out any stale or broken VS Code repository variations
+# Clear out any stale or broken VS Code repository variations safely
 sudo rm -f /etc/yum.repos.d/vscode.repo
 
 # Explicitly write clean newlines into the VS Code repository layer
@@ -48,15 +48,15 @@ sudo dnf5 install code -y
 # Configure Flathub Core Repository using root privileges
 sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
-# Hardened Flatpak validation block (easily allows you to add future developer Flatpaks)
+# Hardened Flatpak validation block (ready for future dev tools if needed)
 DEVELOPER_FLATPAKS=(
-    "org.gimp.GIMP" # Left as an example; remove or swap out as needed!
+    "org.gimp.GIMP"
 )
 
 echo "Deploying system flatpaks..."
 for app in "${DEVELOPER_FLATPAKS[@]}"; do
-    # Adding || true guarantees individual flatpak dropouts won't kill the script execution
-    sudo flatpak install flathub "$app" -y || echo "Warning: Failed to install $app, skipping..."
+    # Wrap in subshell block to cleanly bypass 'set -e' constraints on failure
+    (sudo flatpak install flathub "$app" -y) || echo "Warning: Failed to install $app, skipping..."
 done
 
 echo "=============================================================================="
@@ -76,8 +76,9 @@ sudo npm install -g @anthropic-ai/claude-code
 sudo npm install -g @openai/codex
 sudo npm install -g @google/gemini-cli
 
-# Optional contextual helper utilities (Will log a warning instead of breaking the script)
-sudo npm install -g one-file-context || echo "Warning: one-file-context failed to install, skipping..."
+# Optional contextual helper utilities (Safeguarded from registry name changes)
+(sudo npm install -g one-file-context) || echo "Warning: one-file-context failed to install, skipping..."
+
 echo "=============================================================================="
 echo " STAGE 5: SYSTEM PRODUCTION VERIFICATION"
 echo "=============================================================================="
@@ -91,4 +92,7 @@ code --version | head -n 1
 ollama --version
 echo "------------------------------------------------"
 
-echo "Bootstrap complete! Pull down an open-source model using 'ollama run llama3' to start coding."
+echo "Bootstrap complete!"
+
+# Execute Fastfetch to celebrate the clean install and reveal core specs
+fastfetch
