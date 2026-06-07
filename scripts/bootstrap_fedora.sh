@@ -71,9 +71,13 @@ sudo systemctl enable --now ollama
 echo "=============================================================================="
 echo " STAGE 4: CLOUD AI CLI TOOLING EMISSION"
 echo "=============================================================================="
-# Global deployment of structural Node-based AI developer runtimes
-sudo npm install -g @anthropic-ai/claude-code @openai/codex @google/gemini-cli one-file-context
+# Core production AI terminals (Crucial - script will stop if these fail)
+sudo npm install -g @anthropic-ai/claude-code
+sudo npm install -g @openai/codex
+sudo npm install -g @google/gemini-cli
 
+# Optional contextual helper utilities (Will log a warning instead of breaking the script)
+sudo npm install -g one-file-context || echo "Warning: one-file-context failed to install, skipping..."
 echo "=============================================================================="
 echo " STAGE 5: SYSTEM PRODUCTION VERIFICATION"
 echo "=============================================================================="
