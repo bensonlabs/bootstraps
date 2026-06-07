@@ -41,6 +41,7 @@ cli_tools=(
     htop
     starship
     fish
+    bat
     zsh-completions
     gemini-cli
 )
