@@ -99,8 +99,7 @@ code --version | head -n 1
 ollama --version
 echo "------------------------------------------------"
 
-echo "Bootstrap complete! Pull down an open-source model using 'ollama run llama3' to start coding."
-echo ""
+echo "Bootstrap complete!"
 
 # Execute Fastfetch to celebrate the clean install and reveal core specs
 fastfetch
