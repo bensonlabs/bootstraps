@@ -39,12 +39,13 @@ cli_tools=(
     uv
     ripgrep
     bat
+    tree            # Added: Directory hierarchy visualization tool
     htop
     starship
     fish
     zsh-completions
     gemini-cli
-    coreutils       # Required for genuine GNU Linux file mapping (gls)
+    coreutils       # Required for genuine Linux file mapping (gls)
 )
 
 for tool in "${cli_tools[@]}"; do
@@ -64,6 +65,7 @@ casks=(
     visual-studio-code
     iterm2
     github
+    caffeine        # Added: Anti-sleep utility
 )
 
 for cask in "${casks[@]}"; do
@@ -105,8 +107,6 @@ echo "🛠️ Creating custom 'll' system binary wrapper..."
 sudo mkdir -p /usr/local/bin
 
 # Build a true native binary wrapper passing parameters cleanly.
-# This uses 'gls' from coreutils to support standard Linux colorization (--color)
-# and lists directories before individual files (--group-directories-first).
 sudo tee /usr/local/bin/ll > /dev/null << 'EOF'
 #!/bin/sh
 exec gls -laFo --color=auto --group-directories-first "$@"
