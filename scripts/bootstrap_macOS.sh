@@ -38,12 +38,13 @@ cli_tools=(
     node
     uv
     ripgrep
+    bat
     htop
     starship
     fish
-    bat
     zsh-completions
     gemini-cli
+    coreutils       # Required for genuine GNU Linux file mapping (gls)
 )
 
 for tool in "${cli_tools[@]}"; do
@@ -96,7 +97,26 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 5. macOS System Configuration
+# 5. Injecting 'll' as a Native System Binary Command
+# ------------------------------------------------------------------------------
+echo "🛠️ Creating custom 'll' system binary wrapper..."
+
+# Ensure target local bin directory exists securely
+sudo mkdir -p /usr/local/bin
+
+# Build a true native binary wrapper passing parameters cleanly.
+# This uses 'gls' from coreutils to support standard Linux colorization (--color)
+# and lists directories before individual files (--group-directories-first).
+sudo tee /usr/local/bin/ll > /dev/null << 'EOF'
+#!/bin/sh
+exec gls -laFo --color=auto --group-directories-first "$@"
+EOF
+
+# Make the raw binary execution file executable by the system root pathing
+sudo chmod +x /usr/local/bin/ll
+
+# ------------------------------------------------------------------------------
+# 6. macOS System Configuration
 # ------------------------------------------------------------------------------
 echo "⚙️ Configuring macOS system defaults..."
 defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
