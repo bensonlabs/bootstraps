@@ -29,7 +29,8 @@ Contains:
 * PowerShell profiles
 * Windows Terminal configuration
 * VS Code configuration
-* Bootstrap and installation scripts
+
+Bootstrap script: `scripts/bootstrap_windows.ps1`
 
 ### WSL2 Ubuntu
 
@@ -37,9 +38,10 @@ Location: wsl2-ubuntu/
 
 Contains:
 
-* Ubuntu bootstrap scripts
 * Package inventories
 * Linux-specific configuration
+
+Bootstrapped as Stage 2 of `scripts/bootstrap_windows.ps1`.
 
 ### macOS
 
@@ -67,7 +69,7 @@ Supported tools:
 * Codex CLI
 * Gemini CLI
 
-Each tool directory contains installation notes, configuration guidance, and workflow documentation.
+See `ai/README.md` for documentation on each tool. Tool-specific documentation is in progress.
 
 ## Inventory and Exports
 

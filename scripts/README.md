@@ -20,8 +20,8 @@ Scripts that capture the current state of a machine.
 
 Current scripts:
 
-- inventory-windows.ps1
-- inventory-wsl.sh
+* inventory-windows.ps1
+* inventory-wsl.sh
 
 Purpose:
 
@@ -38,8 +38,8 @@ Scripts that export specific configuration or application data.
 
 Current scripts:
 
-- export-vscode.ps1
-- export-winget.ps1
+* export-vscode.ps1
+* export-winget.ps1
 
 Purpose:
 
@@ -53,10 +53,10 @@ Scripts that automate workstation setup from a clean installation.
 
 Current scripts:
 
-- bootstrap_windows.ps1
-- bootstrap_ubuntu.sh
-- bootstrap_macOS.sh
-- bootstrap_fedora.sh
+* bootstrap_windows.ps1
+* bootstrap_ubuntu.sh
+* bootstrap_macOS.sh
+* bootstrap_fedora.sh
 
 Purpose:
 

@@ -1,43 +1,43 @@
-Windows
+# Windows
 
 Windows workstation bootstrap resources.
 
 This directory contains everything required to build and maintain a Windows 11 development workstation from a clean installation.
 
-Goals
+## Goals
 
 * Fully reproducible Windows workstation
 * AI-assisted development environment
 * Minimal manual configuration
 * Version-controlled settings and documentation
 
-Contents
+## Contents
 
-winget/
+### winget/
 
 Package definitions and application inventories used to install software through WinGet.
 
-powershell/
+### powershell/
 
 PowerShell profiles, functions, aliases, and shell customizations.
 
-terminal/
+### terminal/
 
 Windows Terminal configuration and preferences.
 
-vscode/
+### vscode/
 
 Visual Studio Code settings, extension inventories, and editor configuration.
 
-configs/
+### configs/
 
 Miscellaneous Windows configuration files that do not fit into other categories.
 
-Bootstrap Script
+## Bootstrap
 
-scripts/bootstrap_windows.ps1 is the primary Windows bootstrap script. It handles Windows setup and generates a Stage 2 script that runs inside WSL2 after reboot.
+`scripts/bootstrap_windows.ps1` is the primary Windows bootstrap script. It handles Windows setup and generates a Stage 2 script that runs inside WSL2 after reboot.
 
-Target Environment
+## Target Environment
 
 * Windows 11 Pro
 * PowerShell 7
@@ -51,6 +51,6 @@ Target Environment
 * Codex CLI
 * Gemini CLI
 
-Validation
+## Validation
 
 A successful Windows bootstrap should allow a clean Windows installation to be configured with minimal manual intervention.
