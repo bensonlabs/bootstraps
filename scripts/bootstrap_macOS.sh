@@ -16,11 +16,10 @@ echo "🚀 Starting remote macOS Bootstrap Script..."
 # ------------------------------------------------------------------------------
 if ! command -v brew &> /dev/null; then
     echo "🍺 Homebrew not found. Installing..."
-    # Using env to bypass interactive prompts where possible
     NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 fi
 
-# Dynamically load brew environment variables so the rest of THIS remote session can use it
+# Dynamically load brew environment variables based on system architecture
 if [ -f /opt/homebrew/bin/brew ]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
 elif [ -f /usr/local/bin/brew ]; then
@@ -30,10 +29,21 @@ fi
 echo "🍺 Homebrew is ready."
 
 # ------------------------------------------------------------------------------
-# 2. Core CLI Tools
+# 2. Core CLI Tools (Mirrored from your daily driver)
 # ------------------------------------------------------------------------------
-echo "📦 Installing core CLI tools..."
-cli_tools=(git node ripgrep zsh-completions)
+echo "📦 Installing daily driver CLI tools..."
+cli_tools=(
+    git
+    gh
+    node
+    uv
+    ripgrep
+    htop
+    starship
+    fish
+    zsh-completions
+    gemini-cli
+)
 
 for tool in "${cli_tools[@]}"; do
     if brew list "$tool" &> /dev/null; then
@@ -48,7 +58,11 @@ done
 # 3. GUI Applications (Casks)
 # ------------------------------------------------------------------------------
 echo "🖥️ Installing GUI Applications..."
-casks=(visual-studio-code iterm2)
+casks=(
+    visual-studio-code
+    iterm2
+    github
+)
 
 for cask in "${casks[@]}"; do
     echo "   -> Installing $cask..."
@@ -59,13 +73,22 @@ done
 echo "   -> Overtaking/Installing Claude.app cleanly..."
 brew install --cask --force claude
 
+# Safe guard for Gemini Cask (Requires Apple Silicon Architecture + macOS 15+)
+OS_VERSION=$(sw_vers -productVersion | cut -d. -f1)
+
+if [[ "$(uname -m)" == "arm64" ]] && [ "$OS_VERSION" -ge 15 ]; then
+    echo "   -> Apple Silicon & macOS 15+ detected. Installing native Google Gemini App..."
+    brew install --cask --force google-gemini
+else
+    echo "   -> Skipping Google Gemini desktop cask (Requires Apple Silicon & macOS 15+)."
+fi
+
 # ------------------------------------------------------------------------------
 # 4. OpenAI Codex CLI Installation
 # ------------------------------------------------------------------------------
 echo "🤖 Installing OpenAI Codex CLI..."
 if ! command -v codex &> /dev/null; then
     echo "   -> Executing non-interactive Codex installer..."
-    # Passing the non-interactive flag explicitly to prevent script hangs over curl pipe
     curl -fsSL https://chatgpt.com/codex/install.sh | env CODEX_NON_INTERACTIVE=1 sh
 else
     echo "   -> Codex CLI is already installed."
@@ -79,6 +102,7 @@ defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
 defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode2 -bool true
 defaults write com.apple.finder AppleShowAllFiles -bool true
 defaults write com.apple.finder ShowPathbar -bool true
+defaults write NSGlobalDomain NSWindowResizeTime -float 0.001
 
 # Restart Finder safely
 killall Finder &> /dev/null || true
