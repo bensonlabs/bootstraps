@@ -1,1 +1,10 @@
-placeholder
+filter.lfs.clean=git-lfs clean -- %f
+filter.lfs.smudge=git-lfs smudge -- %f
+filter.lfs.process=git-lfs filter-process
+filter.lfs.required=true
+user.name=Justin Benson
+user.email=jbenson.dev@gmail.com
+credential.https://github.com.helper=
+credential.https://github.com.helper=!/opt/homebrew/bin/gh auth git-credential
+credential.https://gist.github.com.helper=
+credential.https://gist.github.com.helper=!/opt/homebrew/bin/gh auth git-credential
