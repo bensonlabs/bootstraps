@@ -18,6 +18,7 @@ sudo apt-get update
 sudo apt-get dist-upgrade -y
 
 # Install Essential Utilities, Build Tools & System Information fetcher
+# Note: Added 'zstd' for Ollama extraction and 'build-essential' for global NPM native modules
 sudo apt-get install -y build-essential curl wget git gh p7zip-full htop nodejs npm python3-pip fastfetch flatpak zstd
 
 # Configure structural Git speed optimizations
@@ -79,12 +80,12 @@ echo "==========================================================================
 echo " STAGE 4: CLOUD AI CLI TOOLING EMISSION"
 echo "=============================================================================="
 # Core production AI terminals (Crucial - script will stop if these fail)
-sudo npm install -g @anthropic-ai/claude-code
-sudo npm install -g @openai/codex
-sudo npm install -g @google/gemini-cli
+sudo npm install -g --unsafe-perm=true @anthropic-ai/claude-code
+sudo npm install -g --unsafe-perm=true @openai/codex
+sudo npm install -g --unsafe-perm=true @google/gemini-cli
 
-# Optional contextual helper utilities (Safeguarded from registry name changes)
-(sudo npm install -g one-file-context) || echo "Warning: one-file-context failed to install, skipping..."
+# Optional contextual helper utilities (Fixed using --unsafe-perm=true permission bypass)
+(sudo npm install -g --unsafe-perm=true one-file-context) || echo "Warning: one-file-context failed to install, skipping..."
 
 echo "=============================================================================="
 echo " STAGE 5: SYSTEM PRODUCTION VERIFICATION"
