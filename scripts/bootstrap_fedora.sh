@@ -14,8 +14,8 @@ echo -e "[main]\nfastestmirror=True\nmax_parallel_downloads=10\ndefaultyes=True"
 sudo dnf upgrade --refresh -y
 
 # Install Essential Utilities & Build Tools
-sudo dnf group install "Development Tools" -y
-sudo dnf install -y curl wget git gh p7zip p7zip-plugins htop util-linux-user
+sudo dnf5 group install development-tools -y
+sudo dnf5 install -y curl wget git gh p7zip p7zip-plugins htop util-linux-user
 
 # Configure Git Performance Overrides
 git config --global core.fscache true
