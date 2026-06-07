@@ -30,9 +30,12 @@ winget install --id Microsoft.PowerShell -e --accept-package-agreements --accept
 # Install Windows Terminal & Utilities
 winget install --id Microsoft.WindowsTerminal -e --accept-package-agreements --accept-source-agreements
 
-# Installs PowerToys silently into the User profile scope to completely bypass UAC/Admin confirmation popups
-winget install --id Microsoft.PowerToys -e --scope user --accept-package-agreements --accept-source-agreements --override "--silent --no_start_menu_shortcut --no_welcome"
+# Installs PowerToys completely invisibly, bypassing the WiX installer UI and licensing prompts
+winget install --id Microsoft.PowerToys -e --accept-package-agreements --accept-source-agreements --override "--silent --no_start_pt"
+
+# Install helpful tools
 winget install --id voidtools.Everything -e --accept-package-agreements --accept-source-agreements
+winget install --id 7zip.7zip -e --accept-package-agreements --accept-source-agreements
 
 # Sysinternals Suite
 winget install --id Microsoft.Sysinternals.Suite -e --accept-package-agreements --accept-source-agreements
