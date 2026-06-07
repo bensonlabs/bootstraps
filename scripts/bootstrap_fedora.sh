@@ -76,9 +76,6 @@ sudo npm install -g @anthropic-ai/claude-code
 sudo npm install -g @openai/codex
 sudo npm install -g @google/gemini-cli
 
-# Optional contextual helper utilities (Safeguarded from registry name changes)
-(sudo npm install -g one-file-context) || echo "Warning: one-file-context failed to install, skipping..."
-
 echo "=============================================================================="
 echo " STAGE 5: SYSTEM PRODUCTION VERIFICATION"
 echo "=============================================================================="
@@ -93,6 +90,7 @@ ollama --version
 echo "------------------------------------------------"
 
 echo "Bootstrap complete!"
+echo ""
 
 # Execute Fastfetch to celebrate the clean install and reveal core specs
 fastfetch
