@@ -1,89 +1,106 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MASTER UNATTENDED AI DEVELOPMENT ENVIRONMENT BOOTSTRAP - UBUNTU DESKTOP (LATEST)
+# UNATTENDED AI DEVELOPMENT ENVIRONMENT BOOTSTRAP - UBUNTU (APT / NO-SNAP)
 # ==============================================================================
-set -e
-
-# Ensure non-interactive frontend to bypass prompts
-export DEBIAN_FRONTEND=noninteractive
+set -euo pipefail # Hardened error handling: exit on error, unset vars, or pipe drops
 
 echo "=============================================================================="
 echo " STAGE 1: SYSTEM UPDATES & OPTIMIZATIONS"
 echo "=============================================================================="
-# Fast mirror adjustments & update sequence
-sudo apt-get update && sudo apt-get upgrade -y
+# Optimize APT parameters for faster parallel downloading
+sudo tee /etc/apt/apt.conf.d/99parallel-downloads << 'EOF'
+APT::Periodic::Enable "0";
+Binary::apt::APT::Keep-Downloaded-Packages "true";
+EOF
 
-# Install Essential Utilities & Build Essential Stack
-sudo apt-get install -y curl wget git build-essential software-properties-common apt-transport-https htop fsearch
+# Update package lists and perform a non-interactive system upgrade
+sudo apt-get update
+sudo apt-get dist-upgrade -y
 
-# GitHub CLI installation repository setup
-if ! type -p gh >/dev/null; then
-    sudo mkdir -p -m 755 /etc/apt/keyrings
-    wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
-    sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.p/github-cli.list > /dev/null
-    sudo apt-get update
-fi
-sudo apt-get install -y gh
+# Install Essential Utilities, Build Tools & System Information fetcher
+sudo apt-get install -y build-essential curl wget git gh p7zip-full htop nodejs npm python3-pip fastfetch flatpak
 
-# Configure Git Performance Overrides
+# Configure structural Git speed optimizations
 git config --global core.fscache true
 git config --global core.preloadindex true
 git config --global gc.auto 256
 
 echo "=============================================================================="
-echo " STAGE 2: APPLICATION RUNTIMES & REPOSITORIES"
+echo " STAGE 2: APPLICATION RUNTIMES & REPOSITORIES (NATIVE ONLY)"
 echo "=============================================================================="
-# 1. Install VS Code Via Official Microsoft Repo (Avoids Snap performance snags for IDEs)
-wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg
-sudo install -D -o root -g root -m 644 packages.microsoft.gpg /etc/apt/keyrings/packages.microsoft.gpg
-sudo sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list'
-rm -f packages.microsoft.gpg
-sudo apt-get update && sudo apt-get install -y code
+# Clear out any stale or broken VS Code repository variations safely
+sudo rm -f /etc/apt/sources.list.d/vscode.list
+sudo rm -f /etc/apt/keyrings/packages.microsoft.gpg
+sudo rm -f /etc/apt/preferences.d/vscode
 
-# 2. Desktop AI Applications via Snap (Native to Ubuntu Desktop Out-of-the-Box)
-sudo snap install claude-desktop --beta || echo "Claude desktop not available via snap yet, skipping..."
-sudo snap install chatgpt-desktop || echo "ChatGPT desktop not available via snap yet, skipping..."
-
-# 3. Runtimes: Python 3 & Node.js LTS via NodeSource
-sudo apt-get install -y python3 python3-pip python3-venv Python3-dev
-
-# Fetch and script-install latest Node.js LTS 
-curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-echo "=============================================================================="
-echo " STAGE 3: CONTAINERIZATION (DOCKER CE)"
-echo "=============================================================================="
-# Install official Docker CE repository setup
+# Download Microsoft GPG signing key and add the VS Code repository
 sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+curl -fSsL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/packages.microsoft.gpg > /dev/null
 
+sudo tee /etc/apt/sources.list.d/vscode.list << 'EOF'
+deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main
+EOF
+
+# Strict Apt Pinning: Force apt to prefer the Microsoft repo over Ubuntu's Snap wrapper
+sudo tee /etc/apt/preferences.d/vscode << 'EOF'
+Package: code
+Pin: origin packages.microsoft.com
+Pin-Priority: 1001
+EOF
+
+# Refresh package index and install VS Code (.deb native binary)
 sudo apt-get update
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo apt-get install -y code
 
-# Enable and spin up service background
-sudo systemctl enable --now docker
-sudo usermod -aG docker $USER
+# Configure Flathub Core Repository using root privileges (Alternative to Snap Store)
+sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
+# Hardened Flatpak validation block (ready for future dev tools if needed)
+DEVELOPER_FLATPAKS=(
+    "org.gimp.GIMP"
+)
+
+echo "Deploying system flatpaks..."
+for app in "${DEVELOPER_FLATPAKS[@]}"; do
+    # Wrap in subshell block to cleanly bypass 'set -e' constraints on failure
+    (sudo flatpak install flathub "$app" -y) || echo "Warning: Failed to install $app, skipping..."
+done
 
 echo "=============================================================================="
-echo " STAGE 4: GLOBAL AI CLI TOOLS (NPM)"
+echo " STAGE 3: LOCAL AI ENGINE DEPLOYMENT (OLLAMA)"
 echo "=============================================================================="
-# Install the global AI tools
-sudo npm install -g @anthropic-ai/claude-code @openai/codex @google/gemini-cli one-file-context
+echo "Downloading and provisioning bare-metal Linux Ollama subsystem..."
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Enable and start the systemd service so Ollama boots with the machine
+sudo systemctl enable --now ollama
 
 echo "=============================================================================="
-echo " STAGE 5: SYSTEM VERIFICATION"
+echo " STAGE 4: CLOUD AI CLI TOOLING EMISSION"
 echo "=============================================================================="
-echo -e "\n--- VERIFYING UBUNTU DESKTOP STACK ---"
-lsb_release -a
+# Core production AI terminals (Crucial - script will stop if these fail)
+sudo npm install -g @anthropic-ai/claude-code
+sudo npm install -g @openai/codex
+sudo npm install -g @google/gemini-cli
+
+# Optional contextual helper utilities (Safeguarded from registry name changes)
+(sudo npm install -g one-file-context) || echo "Warning: one-file-context failed to install, skipping..."
+
+echo "=============================================================================="
+echo " STAGE 5: SYSTEM PRODUCTION VERIFICATION"
+echo "=============================================================================="
+echo -e "\n--- VERIFYING UBUNTU WORKSTATION ENGINE STACK ---"
+lsb_release -d
 git --version
 gh --version
-python3 --version
 node --version
-docker --version
-sudo npm list -g --depth=0
-echo "----------------------------------------"
+npm list -g --depth=0
+code --version | head -n 1
+ollama --version
+echo "------------------------------------------------"
 
-echo "Bootstrap complete! Please log out and back in, or reboot your laptop to apply user group changes."
+echo "Bootstrap complete! Pull down an open-source model using 'ollama run llama3' to start coding."
+echo ""
+
+# Execute Fastfetch to celebrate the clean install and reveal core specs
+fastfetch
