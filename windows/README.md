@@ -33,9 +33,9 @@ configs/
 
 Miscellaneous Windows configuration files that do not fit into other categories.
 
-install.ps1
+Bootstrap Script
 
-Primary Windows bootstrap script.
+scripts/bootstrap_windows.ps1 is the primary Windows bootstrap script. It handles Windows setup and generates a Stage 2 script that runs inside WSL2 after reboot.
 
 Target Environment
 

@@ -21,9 +21,9 @@ configs/
 
 Linux-specific configuration files and shell customizations.
 
-bootstrap.sh
+Bootstrap
 
-Primary Ubuntu bootstrap script.
+WSL2 Ubuntu is bootstrapped as Stage 2 of scripts/bootstrap_windows.ps1, which generates and runs a Linux setup script inside WSL after the Windows reboot. There is no standalone bootstrap script for this environment.
 
 Core Components
 
