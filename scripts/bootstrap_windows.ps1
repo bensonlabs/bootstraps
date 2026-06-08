@@ -1,7 +1,5 @@
 # ==============================================================================
 # MASTER UNATTENDED AI DEVELOPMENT ENVIRONMENT BOOTSTRAP SCRIPT
-# Designed to be run remotely via PowerShell Admin prompt:
-# Set-ExecutionPolicy Bypass -Scope Process -Force; irm https://raw.githubusercontent.com/bensonlabs/bootstraps/main/scripts/bootstrap_windows.ps1 -OutFile bootstrap_windows.ps1; .\bootstrap_windows.ps1
 # ==============================================================================
 
 # 1. Elevate Execution Policy for the life of this process
@@ -26,46 +24,37 @@ Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 # STAGE 1: WINDOWS ENVIRONMENT PROVISIONING
 # ==============================================================================
 
-# Install Modern PowerShell & Windows Terminal (Bypasses license agreements)
+# Install Modern PowerShell (Bypasses the 'Y' license agreement)
 winget install --id Microsoft.PowerShell -e --accept-package-agreements --accept-source-agreements
-winget install --id Microsoft.WindowsTerminal -e --accept-package-agreements --accept-source-agreements
 
-# Installs PowerToys silently (acts as your Windows 'Caffeine' alternative via Awake)
-Write-Host "Downloading and installing PowerToys silently..." -ForegroundColor Cyan
-$ptUrl = "https://github.com/microsoft/PowerToys/releases/download/v0.99.1/PowerToysUserSetup-0.99.1-x64.exe"
-$ptPath = "$env:TEMP\PowerToysUserSetup.exe"
-Invoke-WebRequest -Uri $ptUrl -OutFile $ptPath
-Start-Process -FilePath $ptPath -ArgumentList "/quiet /install /norestart" -Wait
+# Install Windows Terminal & Utilities
+winget install --id Microsoft.WindowsTerminal -e --accept-package-agreements --accept-source-agreements
+winget install --id voidtools.Everything -e --accept-package-agreements --accept-source-agreements
+
+# SILENT POWERTOYS MSI INSTALLATION (Bypasses WiX Bootstrapper & Pop-up Engines)
+Write-Host "Downloading and installing PowerToys via Kernel MSI..." -ForegroundColor Cyan
+$ptUrl = "https://github.com/microsoft/PowerToys/releases/download/v0.99.1/PowerToysSetup-0.99.1-x64.msi"
+$ptPath = "$env:TEMP\PowerToysSetup.msi"
+$webClient = New-Object System.Net.WebClient
+$webClient.DownloadFile($ptUrl, $ptPath)
+Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$ptPath`" /qn /norestart" -Wait
 Remove-Item -Path $ptPath -Force
 
-# Install Core System Utilities
-winget install --id voidtools.Everything -e --accept-package-agreements --accept-source-agreements
-winget install --id 7zip.7zip -e --accept-package-agreements --accept-source-agreements
+# Sysinternals Suite
 winget install --id Microsoft.Sysinternals.Suite -e --accept-package-agreements --accept-source-agreements
 
-# Git & GitHub Core Infrastructure Layout
+# Git, GitHub CLI, and Copilot Extensions
 winget install --id Git.Git -e --accept-package-agreements --accept-source-agreements
 winget install --id GitHub.cli -e --accept-package-agreements --accept-source-agreements
 winget install --id GitHub.GitHubDesktop -e --accept-package-agreements --accept-source-agreements
+winget install --id GitHub.Copilot -e --accept-package-agreements --accept-source-agreements
 
-# Runtimes, Languages & IDEs
+# Runtimes & IDEs
 winget install --id Python.Python.3.13 -e --accept-package-agreements --accept-source-agreements
 winget install --id Microsoft.VisualStudioCode -e --accept-package-agreements --accept-source-agreements
 winget install --id OpenJS.NodeJS.LTS -e --accept-package-agreements --accept-source-agreements
 
-# Mirrored macOS/Linux Daily Driver Tool Set
-winget install --id Astral.uv -e --accept-package-agreements --accept-source-agreements
-winget install --id BurntSushi.ripgrep -e --accept-package-agreements --accept-source-agreements
-winget install --id sharkdp.bat -e --accept-package-agreements --accept-source-agreements
-winget install --id GnuWin32.Tree -e --accept-package-agreements --accept-source-agreements
-winget install --id Starship.Starship -e --accept-package-agreements --accept-source-agreements
-winget install --id fish-shell.fish -e --accept-package-agreements --accept-source-agreements
-
-# GUI Applications Mirrored from macOS layout
-winget install --id Obsidian.Obsidian -e --accept-package-agreements --accept-source-agreements
-winget install --id Tailscale.Tailscale -e --accept-package-agreements --accept-source-agreements
-
-# FIRST PATH REFRESH: Ensures package managers and tools work immediately
+# FIRST PATH REFRESH: Ensures 'npm', 'git', and Sysinternals work immediately
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
 # Git Performance Optimization Overrides
@@ -116,22 +105,11 @@ winget install --id 9NT1R1C2HH7J --source msstore -e --accept-package-agreements
 
 npm install -g @anthropic-ai/claude-code
 npm install -g @openai/codex
-npm install -g gemini-cli
+npm install -g google-antigravity-cli
 npm install -g one-file-context
 
 # THIRD PATH REFRESH: Captures globally installed Windows npm binaries
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-
-# ==============================================================================
-# GLOBAL BINARY EMULATION ('ll' for Windows Terminal / Powershell / CMD)
-# ==============================================================================
-Write-Host "🛠️ Creating custom 'll' system binary wrapper..." -ForegroundColor Cyan
-$llScript = @"
-@echo off
-rem Replicates directory grouping, long file listings, and hidden entries cleanly
-dir /A /N /O:G %*
-"@
-Out-File -FilePath "$env:SystemRoot\System32\ll.bat" -InputObject $llScript -Encoding ASCII -Force
 
 # ==============================================================================
 # WINDOWS STACK VERIFICATION 
@@ -142,11 +120,9 @@ Write-Host "`n--- VERIFYING WINDOWS STACK ---" -ForegroundColor Cyan
 & python --version
 & node --version
 & docker --version
-& uv --version
-& starship --version | Select-Object -First 1
 & npm list -g @anthropic-ai/claude-code --depth=0
 & npm list -g @openai/codex --depth=0
-& gemini --version
+& npm list -g google-antigravity-cli --depth=0
 & npm list -g one-file-context --depth=0
 Write-Host "-------------------------------" -ForegroundColor Cyan
 
@@ -170,42 +146,24 @@ Start-Sleep -Seconds 10
 
 Write-Host "Configuring matching stack inside WSL2 (Ubuntu Latest)..." -ForegroundColor Cyan
 
-# 1. Optimize internal apt-get mirrors inside subsystem environment
-wsl -u root -e bash -c "echo 'APT::Periodic::Enable \"0\";' > /etc/apt/apt.conf.d/99parallel-downloads"
-wsl -u root -e bash -c "apt-get update && apt-get dist-upgrade -y"
+# 1. Update Linux packages
+wsl -u root -e bash -c "apt-get update && apt-get install -y curl git build-essential"
 
-# 2. Install matching core Linux daily driver stack natively
-wsl -u root -e bash -c "apt-get install -y curl git build-essential ripgrep bat tree fish zsh"
-
-# 3. Fix internal Ubuntu 'batcat' shortcut wrapper pathing
-wsl -u root -e bash -c "if [ ! -f /usr/local/bin/bat ] && command -v batcat &> /dev/null; then ln -s /usr/bin/batcat /usr/local/bin/bat; fi"
-
-# 4. Fetch platform-independent binaries directly into the shell layer
-wsl -e bash -c "curl -sS https://starship.rs/install.sh | sh -s -- -y"
-wsl -e bash -c "curl -LsSf https://astral.sh/uv/install.sh | sh"
-
-# 5. Share host Windows Git credentials securely with Linux instance
-wsl -e bash -c "git config --global credential.helper '/mnt/c/Program\ Files/Git/mingw64/bin/git-credential-manager.exe'"
-wsl -e bash -c "git config --global core.fscache true"
-
-# 6. Install matching Node.js environment
+# 2. Install Node.js LTS natively inside Linux
 wsl -u root -e bash -c "curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -"
 wsl -u root -e bash -c "apt-get install -y nodejs"
 
-# 7. Install synchronized AI tools globally inside Linux subsystem container
-wsl -u root -e bash -c "npm install -g @anthropic-ai/claude-code @openai/codex gemini-cli one-file-context"
+# 3. Share Windows Git credentials with Linux
+wsl -e bash -c "git config --global credential.helper '/mnt/c/Program\ Files/Git/mingw64/bin/git-credential-manager.exe'"
 
-# 8. Create custom Linux 'll' command inside the native binary subsystem route
-wsl -u root -e bash -c "echo -e '#!/bin/sh\nexec ls -laF --color=auto --group-directories-first \"\$@\"' > /usr/local/bin/ll"
-wsl -u root -e bash -c "chmod +x /usr/local/bin/ll"
+# 4. Install matching AI CLI Tools globally inside Linux
+wsl -u root -e bash -c "npm install -g @anthropic-ai/claude-code @openai/codex google-antigravity-cli one-file-context"
 
-# 9. WSL Verification Output
+# 5. WSL Verification Output
 Write-Host "`n--- VERIFYING WSL STACK ---" -ForegroundColor Cyan
-wsl -e bash -c "[ -f /etc/os-release ] && grep 'PRETTY_NAME' /etc/os-release"
+wsl -e lsb_release -a
 wsl -e git --version
 wsl -e node --version
-wsl -e uv --version
-wsl -e starship --version | Select-Object -First 1
 wsl -e npm list -g --depth=0
 Write-Host "------------------------" -ForegroundColor Cyan
 
