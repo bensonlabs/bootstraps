@@ -21,7 +21,7 @@ sudo apt-get dist-upgrade -y
 
 # Install Essential Utilities, Build Tools & Daily Drivers from your macOS layout
 sudo apt-get install -y build-essential curl wget git gh p7zip-full htop nodejs npm \
-                        fastfetch flatpak ripgrep bat tree fish zsh
+                        fastfetch flatpak ripgrep bat tree fish zsh zstd
 
 # Fix Ubuntu's 'batcat' naming quirk so it's globally usable via 'bat'
 sudo mkdir -p /usr/local/bin
