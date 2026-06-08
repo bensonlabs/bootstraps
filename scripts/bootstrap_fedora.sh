@@ -153,7 +153,7 @@ echo "==========================================================================
 # Core production AI terminals (Crucial - script will stop if these fail)
 sudo npm install -g @anthropic-ai/claude-code
 sudo npm install -g @openai/codex
-sudo npm install -g @google/gemini-cli
+sudo npm install -g gemini-cli
 
 echo "=============================================================================="
 echo " STAGE 5: SYSTEM PRODUCTION VERIFICATION"
