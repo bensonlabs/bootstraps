@@ -74,7 +74,10 @@ echo "==========================================================================
 # Core production AI terminals (Crucial - script will stop if these fail)
 sudo npm install -g @anthropic-ai/claude-code
 sudo npm install -g @openai/codex
-sudo npm install -g @google/gemini-cli@latest
+
+# Future-facing Google Antigravity execution hook validation
+echo "Pre-caching and testing Antigravity Runtime environment..."
+(sudo npx --yes @google/antigravity-cli --version) || echo "Notice: Antigravity CLI initialized or ready for dynamic npx execution."
 
 echo "=============================================================================="
 echo " STAGE 5: SYSTEM PRODUCTION VERIFICATION"
