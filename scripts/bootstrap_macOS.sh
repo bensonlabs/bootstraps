@@ -68,6 +68,7 @@ casks=(
     caffeine
     obsidian
     tailscale
+    chatgpt
 )
 
 for cask in "${casks[@]}"; do
