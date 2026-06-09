@@ -69,6 +69,7 @@ casks=(
     obsidian
     tailscale
     chatgpt
+    bitwarden
 )
 
 for cask in "${casks[@]}"; do
