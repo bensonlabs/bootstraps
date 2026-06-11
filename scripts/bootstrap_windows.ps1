@@ -54,6 +54,9 @@ winget install --id Python.Python.3.13 -e --accept-package-agreements --accept-s
 winget install --id Microsoft.VisualStudioCode -e --accept-package-agreements --accept-source-agreements
 winget install --id OpenJS.NodeJS.LTS -e --accept-package-agreements --accept-source-agreements
 
+# Install Slack app
+winget install --id SlackTechnologies.SlackS -e --accept-package-agreements --accept-source-agreements
+
 # FIRST PATH REFRESH: Ensures 'npm', 'git', and Sysinternals work immediately
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
