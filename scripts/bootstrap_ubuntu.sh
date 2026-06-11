@@ -18,7 +18,7 @@ sudo apt-get update
 sudo apt-get dist-upgrade -y
 
 # Install Essential Utilities, Build Tools & System Information fetcher
-sudo apt-get install -y build-essential curl wget git gh p7zip-full htop nodejs npm python3-pip fastfetch flatpak zstd
+sudo apt-get install -y build-essential curl wget git gh p7zip-full htop nodejs npm python3-pip fastfetch flatpak zstd slack
 
 # Configure structural Git speed optimizations
 git config --global core.fscache true
