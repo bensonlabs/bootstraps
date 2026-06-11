@@ -19,7 +19,7 @@ sudo dnf5 upgrade -y
 
 # Install Essential Utilities, Build Tools & System Information fetcher
 sudo dnf5 group install development-tools -y
-sudo dnf5 install -y curl wget git gh p7zip p7zip-plugins htop util-linux-user nodejs python3-pip fastfetch
+sudo dnf5 install -y curl wget git gh p7zip p7zip-plugins htop util-linux-user nodejs python3-pip fastfetch slack
 
 # Configure structural Git speed optimizations
 git config --global core.fscache true
