@@ -70,6 +70,7 @@ casks=(
     tailscale
     chatgpt
     bitwarden
+    slack
 )
 
 for cask in "${casks[@]}"; do
