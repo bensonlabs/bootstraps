@@ -108,7 +108,9 @@ winget install --id 9NT1R1C2HH7J --source msstore -e --accept-package-agreements
 
 npm install -g @anthropic-ai/claude-code
 npm install -g @openai/codex
-npm install -g google-antigravity-cli
+#npm install -g google-antigravity-cli
+winget install -e --id Google.Antigravity
+irm https://antigravity.google/cli/install.ps1 | iex
 npm install -g one-file-context
 
 # THIRD PATH REFRESH: Captures globally installed Windows npm binaries
