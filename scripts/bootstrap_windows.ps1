@@ -64,6 +64,8 @@ $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";"
 git config --global core.fscache true
 git config --global core.preloadindex true
 git config --global gc.auto 256
+git config --global user.name "Justin Benson"
+git config --global user.email "jbenson.dev@gmail.com"
 
 # Explicit Windows App Path registration for global Python use
 Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\App Paths\python.exe" -Name "(Default)" -Value "C:\Program Files\Python313\python.exe" -ErrorAction SilentlyContinue
