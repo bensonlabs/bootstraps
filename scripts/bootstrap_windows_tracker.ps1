@@ -53,8 +53,8 @@ npm list -g @anthropic-ai/claude-code --depth=0
 nssm version
 
 Write-Host "`nDone. Next steps:" -ForegroundColor Green
-Write-Host "  1. git clone https://github.com/bensonlabs/loaner-tracker.git"
-Write-Host "  2. cd loaner-tracker"
+Write-Host "  1. git clone https://github.com/bensonlabs/facstaff-loaner-checkout.git"
+Write-Host "  2. cd facstaff-loaner-checkout"
 Write-Host "  3. python -m venv venv"
 Write-Host "  4. .\venv\Scripts\activate"
 Write-Host "  5. pip install -r requirements.txt"
