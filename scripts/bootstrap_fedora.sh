@@ -44,8 +44,8 @@ FLATPAK_APPS=(
     "com.bitwarden.desktop"       # Bitwarden password manager
     "md.obsidian.Obsidian"        # Obsidian notes
     "com.slack.Slack"             # Slack
-    "com.openai.ChatGPT"          # ChatGPT desktop app
-    "com.google.Gemini"           # Google Gemini app
+   # "com.openai.ChatGPT"          # ChatGPT desktop app
+   # "com.google.Gemini"           # Google Gemini app
 )
 
 echo "Installing productivity flatpaks..."
