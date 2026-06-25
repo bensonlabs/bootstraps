@@ -72,8 +72,8 @@ echo "==========================================================================
 echo " STAGE 4: CLOUD AI CLI TOOLING EMISSION"
 echo "=============================================================================="
 # Core production AI terminals (Crucial - script will stop if these fail)
-sudo npm install -g @anthropic-ai/claude-code
-sudo npm install -g @openai/codex
+npm install -g @anthropic-ai/claude-code
+npm install -g @openai/codex
 
 # Future-facing Google Antigravity execution hook validation
 echo "Pre-caching and testing Antigravity Runtime environment..."
