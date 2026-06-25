@@ -84,6 +84,14 @@ curl -fsSL https://zed.dev/install.sh | sh
 echo "Installing Google Antigravity CLI..."
 curl -fsSL https://antigravity.google/cli/install.sh | bash
 
+# Github Copilot CLI
+curl -fsSL https://gh.io/copilot-install | bash
+
+# Github CLI
+sudo dnf install dnf5-plugins
+sudo dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo
+sudo dnf install gh
+
 echo "=============================================================================="
 echo " STAGE 5: SYSTEM PRODUCTION VERIFICATION"
 echo "=============================================================================="
