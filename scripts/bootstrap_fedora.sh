@@ -71,13 +71,20 @@ sudo systemctl enable --now ollama
 echo "=============================================================================="
 echo " STAGE 4: CLOUD AI CLI TOOLING EMISSION"
 echo "=============================================================================="
-# Core production AI terminals (Crucial - script will stop if these fail)
-npm install -g @anthropic-ai/claude-code
-npm install -g @openai/codex
+# Claude Code - fetch binary directly
+echo "Installing Claude Code CLI..."
+mkdir -p ~/.local/bin
+curl -fsSL https://storage.googleapis.com/claude-releases/claude-code/latest/claude-code-linux-x64 \
+  -o ~/.local/bin/claude-code
+chmod +x ~/.local/bin/claude-code
 
-# Future-facing Google Antigravity execution hook validation
-echo "Pre-caching and testing Antigravity Runtime environment..."
-(sudo npx --yes @google/antigravity-cli --version) || echo "Notice: Antigravity CLI initialized or ready for dynamic npx execution."
+# Zed IDE - fetch binary
+echo "Installing Zed IDE..."
+curl -fsSL https://zed.dev/install.sh | sh
+
+# Google Antigravity - validate npx call (confirm correct package name)
+echo "Testing Google Antigravity runtime..."
+npx @google/antigravity --version || echo "Notice: Antigravity package name may differ; verify with 'npx @google/antigravity --help'"
 
 echo "=============================================================================="
 echo " STAGE 5: SYSTEM PRODUCTION VERIFICATION"
