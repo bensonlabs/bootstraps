@@ -17,8 +17,8 @@ EOF
 sudo dnf5 upgrade -y
 
 sudo dnf5 group install development-tools -y
-sudo dnf5 install -y curl wget git gh p7zip p7zip-plugins htop util-linux-user nodejs python3-pip fastfetch
-
+sudo dnf5 install -y curl wget git gh p7zip p7zip-plugins htop util-linux-user nodejs python3-pip fastfetch btrfs-progs snapper grub-btrfs btrfs-assistant tree rg
+    
 git config --global core.fscache true
 git config --global core.preloadindex true
 git config --global gc.auto 256
@@ -71,6 +71,9 @@ export PATH="$HOME/.npm-global/bin:$PATH"
 echo "Installing Claude Code..."
 npm install -g @anthropic-ai/claude-code
 
+# Codex CLI
+curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh
+
 # Zed IDE
 echo "Installing Zed IDE..."
 curl -fsSL https://zed.dev/install.sh | sh
@@ -78,6 +81,7 @@ curl -fsSL https://zed.dev/install.sh | sh
 # Google Antigravity
 echo "Testing Google Antigravity runtime..."
 npx @google/antigravity --version || echo "Notice: Verify correct Antigravity package name."
+curl -fsSL https://antigravity.google/cli/install.sh | bash
 
 echo "=============================================================================="
 echo " STAGE 5: SYSTEM PRODUCTION VERIFICATION"
