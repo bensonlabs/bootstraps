@@ -29,18 +29,11 @@ git config --global gc.auto 256
 echo "=============================================================================="
 echo " STAGE 2: APPLICATION RUNTIMES & REPOSITORIES"
 echo "=============================================================================="
-# Clear out any stale or broken VS Code repository variations safely
-sudo rm -f /etc/yum.repos.d/vscode.repo
+# Configure Flathub Core Repository using root privileges
+sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
-# Explicitly write clean newlines into the VS Code repository layer
-sudo tee /etc/yum.repos.d/vscode.repo << 'EOF'
-[code]
-name=Visual Studio Code
-baseurl=https://packages.microsoft.com/yumrepos/vscode
-enabled=1
-gpgcheck=1
-gpgkey=https://packages.microsoft.com/keys/microsoft.asc
-EOF
+# Install VS Code via Flatpak (more reliable than DNF)
+sudo flatpak install flathub com.visualstudio.code -y
 
 sudo dnf5 check-update || true
 sudo dnf5 install code -y
