@@ -61,11 +61,12 @@ sudo systemctl enable --now tailscaled
 echo "=============================================================================="
 echo " STAGE 3: LOCAL AI ENGINE DEPLOYMENT (OLLAMA)"
 echo "=============================================================================="
-echo "Downloading and provisioning bare-metal Linux Ollama subsystem..."
-curl -fsSL https://ollama.com/install.sh | sh
+echo "skipped... actually..."
+#echo "Downloading and provisioning bare-metal Linux Ollama subsystem..."
+#curl -fsSL https://ollama.com/install.sh | sh
 
 # Enable and start the systemd service so Ollama boots with the machine
-sudo systemctl enable --now ollama
+# sudo systemctl enable --now ollama
 
 echo "=============================================================================="
 echo " STAGE 4: CLOUD AI CLI TOOLING EMISSION"
