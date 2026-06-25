@@ -92,7 +92,6 @@ echo " STAGE 5: SYSTEM PRODUCTION VERIFICATION"
 echo "=============================================================================="
 echo -e "\n--- VERIFYING FEDORA WORKSTATION ENGINE STACK ---"
 cat /etc/fedora-release
-echo ""
 git --version
 gh --version
 node --version
@@ -110,7 +109,6 @@ zed --version 2>/dev/null || echo "WARN: Zed not in PATH"
 echo ""
 echo "--- SYSTEM SERVICES ---"
 tailscale version
-# ollama --version  # skipped - Ollama not installed
 echo ""
 echo "--- FLATPAKS ---"
 flatpak list --app --columns=application | grep -E "visualstudio|brave|bitwarden|obsidian|slack" || echo "WARN: Some flatpaks may be missing"
