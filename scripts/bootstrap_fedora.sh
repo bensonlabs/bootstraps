@@ -87,29 +87,34 @@ curl -fsSL https://antigravity.google/cli/install.sh | bash
 # Github Copilot CLI
 curl -fsSL https://gh.io/copilot-install | bash
 
-# Github CLI
-sudo dnf install dnf5-plugins
-sudo dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo
-sudo dnf install gh
-
 echo "=============================================================================="
 echo " STAGE 5: SYSTEM PRODUCTION VERIFICATION"
 echo "=============================================================================="
 echo -e "\n--- VERIFYING FEDORA WORKSTATION ENGINE STACK ---"
 cat /etc/fedora-release
+echo ""
 git --version
 gh --version
 node --version
+npm --version
+echo ""
+echo "--- NPM GLOBALS ---"
 npm list -g --depth=0
-flatpak run com.visualstudio.code --version | head -n 1
-# ollama --version  # skipped - Ollama not installed
-claude --version 2>/dev/null || echo "Claude Code not found in PATH (re-source ~/.bashrc)"
-codex --version 2>/dev/null || echo "Codex not found in PATH (re-source ~/.bashrc)"
-zed --version 2>/dev/null || echo "Zed IDE not found in PATH"
-agy --version 2>/dev/null || echo "Antigravity CLI not found in PATH (re-source ~/.bashrc)"
+echo ""
+echo "--- AI TOOLING ---"
+claude --version 2>/dev/null || echo "WARN: Claude Code not in PATH (re-source ~/.bashrc)"
+codex --version 2>/dev/null || echo "WARN: Codex not in PATH (re-source ~/.bashrc)"
+copilot --version 2>/dev/null || echo "WARN: Copilot CLI not in PATH (re-source ~/.bashrc)"
+agy --version 2>/dev/null || echo "WARN: Antigravity CLI not in PATH (re-source ~/.bashrc)"
+zed --version 2>/dev/null || echo "WARN: Zed not in PATH"
+echo ""
+echo "--- SYSTEM SERVICES ---"
 tailscale version
+# ollama --version  # skipped - Ollama not installed
+echo ""
+echo "--- FLATPAKS ---"
+flatpak list --app --columns=application | grep -E "visualstudio|brave|bitwarden|obsidian|slack" || echo "WARN: Some flatpaks may be missing"
 echo "------------------------------------------------"
-
 echo "Bootstrap complete!"
 echo ""
 fastfetch
