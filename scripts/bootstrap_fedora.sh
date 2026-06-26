@@ -29,8 +29,6 @@ BASE_PACKAGES=(
     ripgrep
 )
 
-OPTIONAL_PACKAGES=()
-
 FLATPAK_APPS=(
     com.visualstudio.code
     com.brave.Browser
@@ -45,6 +43,7 @@ AI_CLI_CHECKS=(
     "GitHub Copilot CLI:copilot --version"
     "Google Antigravity CLI:agy --version"
     "Zed:zed --version"
+    "GitHub CLI:gh --version"
 )
 
 log() {
@@ -75,7 +74,7 @@ print_stage() {
 run_step() {
     local description="$1"
     shift
-    if "$@"; then
+    if "$@" >> "$BOOTSTRAP_LOG" 2>&1; then
         record_success "$description"
         return 0
     fi
@@ -87,29 +86,27 @@ run_step() {
 run_optional_step() {
     local description="$1"
     shift
-    if "$@"; then
+    if "$@" >> "$BOOTSTRAP_LOG" 2>&1; then
         record_success "$description"
     else
         warn "$description failed; continuing"
     fi
 }
 
-install_optional_dnf_packages() {
-    local pkg
-    if [[ ${#OPTIONAL_PACKAGES[@]} -eq 0 ]]; then
-        record_success "No optional DNF packages configured"
-        return 0
+run_optional_pipe_step() {
+    local description="$1"
+    local command="$2"
+    if bash -c "$command" >> "$BOOTSTRAP_LOG" 2>&1; then
+        record_success "$description"
+    else
+        warn "$description failed; continuing"
     fi
-
-    for pkg in "${OPTIONAL_PACKAGES[@]}"; do
-        run_optional_step "Optional package install: $pkg" sudo dnf5 install -y "$pkg"
-    done
 }
 
 install_flatpaks() {
     local app
 
-    if ! sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo; then
+    if ! sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo >> "$BOOTSTRAP_LOG" 2>&1; then
         warn "Failed to add Flathub remote; skipping Flatpak app installs"
         SKIP_FLATPAK_INSTALLS=1
         return 0
@@ -145,22 +142,16 @@ install_desktop_packages() {
 }
 
 install_tailscale() {
-    log "Installing Tailscale..."
-    if ! sudo dnf5 install -y tailscale; then
-        warn "Failed to install tailscale; skipping service enablement"
-        return 0
-    fi
-
-    record_success "Installed tailscale"
-
-    if sudo systemctl enable --now tailscaled; then
-        record_success "Enabled and started tailscaled"
-    else
-        warn "Tailscale installed but tailscaled could not be enabled/started"
-    fi
+    run_optional_step "Install tailscale" sudo dnf5 install -y tailscale
+    run_optional_step "Enable and start tailscaled" sudo systemctl enable --now tailscaled
 }
 
 ensure_npm_global_path() {
+    if ! command -v npm >/dev/null 2>&1; then
+        warn "npm is not available; skipping npm global path setup"
+        return 0
+    fi
+
     mkdir -p "$HOME/.npm-global"
     record_success "Ensured npm global directory exists"
     run_step "Configure npm global prefix" npm config set prefix "$HOME/.npm-global"
@@ -182,7 +173,7 @@ install_shell_cli() {
     local command="$2"
 
     log "Installing $description..."
-    if bash -lc "$command"; then
+    if bash -c "$command" >> "$BOOTSTRAP_LOG" 2>&1; then
         hash -r
         record_success "Installed $description"
     else
@@ -195,7 +186,24 @@ verify_ai_clis() {
     for entry in "${AI_CLI_CHECKS[@]}"; do
         description="${entry%%:*}"
         command="${entry#*:}"
-        run_optional_step "Check $description version" bash -lc "$command"
+        run_optional_pipe_step "Check $description version" "$command"
+    done
+}
+
+verify_flatpaks() {
+    local app
+
+    if [[ "$SKIP_FLATPAK_INSTALLS" -eq 1 ]]; then
+        warn "Skipping Flatpak verification because Flathub setup failed"
+        return 0
+    fi
+
+    for app in "${FLATPAK_APPS[@]}"; do
+        if flatpak list --app --columns=application | grep -Fxq "$app"; then
+            record_success "Verified Flatpak: $app"
+        else
+            warn "Missing expected Flatpak: $app"
+        fi
     done
 }
 
@@ -236,7 +244,7 @@ log " Detected desktop: $DESKTOP_ENV"
 log "=============================================================================="
 
 print_stage "STAGE 1: SYSTEM UPDATES & OPTIMIZATIONS"
-sudo tee /etc/dnf/dnf.conf << 'EOF'
+sudo tee /etc/dnf/dnf.conf << 'EOF' >> "$BOOTSTRAP_LOG"
 [main]
 fastestmirror=True
 max_parallel_downloads=10
@@ -247,7 +255,6 @@ record_success "Configured /etc/dnf/dnf.conf"
 run_step "System upgrade" sudo dnf5 upgrade -y
 run_step "Development Tools group install" sudo dnf5 group install development-tools -y
 run_step "Base package install" sudo dnf5 install -y "${BASE_PACKAGES[@]}"
-install_optional_dnf_packages
 run_optional_step "Git config core.fscache" git config --global core.fscache true
 run_optional_step "Git config core.preloadindex" git config --global core.preloadindex true
 run_optional_step "Git config gc.auto" git config --global gc.auto 256
@@ -259,7 +266,6 @@ install_tailscale
 
 print_stage "STAGE 3: LOCAL AI ENGINE (OLLAMA) - SKIPPED"
 # Uncomment to enable Ollama
-# echo "Downloading and provisioning Ollama..."
 # curl -fsSL https://ollama.com/install.sh | sh
 # sudo systemctl enable --now ollama
 
@@ -275,16 +281,12 @@ print_stage "STAGE 5: SYSTEM PRODUCTION VERIFICATION"
 log "--- VERIFYING FEDORA WORKSTATION ENGINE STACK ---"
 run_optional_step "Read Fedora release" cat /etc/fedora-release
 run_optional_step "Check git version" git --version
-run_optional_step "Check gh version" gh --version
-run_optional_step "Check node version" node --version
-run_optional_step "Check npm version" npm --version
+run_optional_pipe_step "Check gh version" "gh --version"
+run_optional_pipe_step "Check node version" "node --version"
+run_optional_pipe_step "Check npm version" "npm --version"
 log ""
 log "--- NPM GLOBALS ---"
-if npm list -g --depth=0 >> "$BOOTSTRAP_LOG" 2>&1; then
-    record_success "Listed global npm packages"
-else
-    warn "Unable to list global npm packages"
-fi
+run_optional_pipe_step "List global npm packages" "npm list -g --depth=0"
 log ""
 log "--- AI TOOLING ---"
 verify_ai_clis
@@ -293,11 +295,7 @@ log "--- SYSTEM SERVICES ---"
 run_optional_step "Check Tailscale version" tailscale version
 log ""
 log "--- FLATPAKS ---"
-if flatpak list --app --columns=application | grep -E "visualstudio|brave|bitwarden|obsidian|slack" >> "$BOOTSTRAP_LOG" 2>&1; then
-    record_success "Verified expected Flatpak apps"
-else
-    warn "Some expected Flatpak apps may be missing"
-fi
+verify_flatpaks
 log "------------------------------------------------"
 log "Bootstrap complete!"
 log ""
