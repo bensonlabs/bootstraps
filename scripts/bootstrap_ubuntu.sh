@@ -27,8 +27,6 @@ BASE_PACKAGES=(
     lsb-release
 )
 
-OPTIONAL_PACKAGES=()
-
 FLATPAK_APPS=(
     com.brave.Browser
     com.bitwarden.desktop
@@ -120,7 +118,7 @@ configure_github_cli_repo() {
     log "Configuring GitHub CLI APT repository..."
     sudo mkdir -p /etc/apt/keyrings
     run_pipe_step "Install GitHub CLI keyring" "curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null"
-    run_pipe_step "Write GitHub CLI sources list" "echo 'deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main' | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null"
+    run_pipe_step "Write GitHub CLI sources list" "echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main\" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null"
 }
 
 configure_vscode_repo() {
@@ -325,7 +323,6 @@ record_success "Configured APT download settings"
 run_step "APT update" sudo apt-get update
 run_step "APT dist-upgrade" sudo apt-get dist-upgrade -y
 run_step "Base package install" sudo apt-get install -y "${BASE_PACKAGES[@]}"
-run_optional_step "Optional APT package batch skipped cleanly" true
 run_optional_step "Git config core.fscache" git config --global core.fscache true
 run_optional_step "Git config core.preloadindex" git config --global core.preloadindex true
 run_optional_step "Git config gc.auto" git config --global gc.auto 256
