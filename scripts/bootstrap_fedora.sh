@@ -29,9 +29,7 @@ BASE_PACKAGES=(
     ripgrep
 )
 
-OPTIONAL_PACKAGES=(
-    grub-btrfs
-)
+OPTIONAL_PACKAGES=()
 
 FLATPAK_APPS=(
     com.visualstudio.code
@@ -98,6 +96,11 @@ run_optional_step() {
 
 install_optional_dnf_packages() {
     local pkg
+    if [[ ${#OPTIONAL_PACKAGES[@]} -eq 0 ]]; then
+        record_success "No optional DNF packages configured"
+        return 0
+    fi
+
     for pkg in "${OPTIONAL_PACKAGES[@]}"; do
         run_optional_step "Optional package install: $pkg" sudo dnf5 install -y "$pkg"
     done
