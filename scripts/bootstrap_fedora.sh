@@ -92,14 +92,18 @@ echo "==========================================================================
 echo " STAGE 4: CLOUD AI CLI TOOLING"
 echo "=============================================================================="
 # Configure user npm prefix - never use sudo with npm
-mkdir -p ~/.npm-global
-npm config set prefix '~/.npm-global'
-echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc
+mkdir -p "$HOME/.npm-global"
+npm config set prefix "$HOME/.npm-global"
+if ! grep -Fqx 'export PATH="$HOME/.npm-global/bin:$PATH"' "$HOME/.bashrc"; then
+    echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> "$HOME/.bashrc"
+fi
 export PATH="$HOME/.npm-global/bin:$PATH"
+hash -r
 
 # Claude Code via npm
 echo "Installing Claude Code..."
 npm install -g @anthropic-ai/claude-code
+hash -r
 
 # Codex CLI (official OpenAI installer)
 echo "Installing Codex CLI..."
@@ -130,7 +134,7 @@ echo "--- NPM GLOBALS ---"
 npm list -g --depth=0
 echo ""
 echo "--- AI TOOLING ---"
-claude --version 2>/dev/null || echo "WARN: Claude Code not in PATH (re-source ~/.bashrc)"
+claude --version 2>/dev/null || echo "WARN: Claude Code not in PATH (run: export PATH=\"\$HOME/.npm-global/bin:\$PATH\")"
 codex --version 2>/dev/null || echo "WARN: Codex not in PATH (re-source ~/.bashrc)"
 copilot --version 2>/dev/null || echo "WARN: Copilot CLI not in PATH (re-source ~/.bashrc)"
 agy --version 2>/dev/null || echo "WARN: Antigravity CLI not in PATH (re-source ~/.bashrc)"
