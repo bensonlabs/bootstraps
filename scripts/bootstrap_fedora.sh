@@ -17,8 +17,37 @@ EOF
 sudo dnf5 upgrade -y
 
 sudo dnf5 group install development-tools -y
-sudo dnf5 install -y curl wget git gh p7zip p7zip-plugins htop util-linux-user nodejs python3-pip fastfetch \
-    btrfs-progs snapper grub-btrfs btrfs-assistant tree ripgrep
+
+BASE_PACKAGES=(
+    curl
+    wget
+    git
+    gh
+    p7zip
+    p7zip-plugins
+    htop
+    util-linux-user
+    nodejs
+    python3-pip
+    fastfetch
+    btrfs-progs
+    snapper
+    btrfs-assistant
+    tree
+    ripgrep
+)
+
+OPTIONAL_PACKAGES=(
+    grub-btrfs
+)
+
+sudo dnf5 install -y "${BASE_PACKAGES[@]}"
+
+for pkg in "${OPTIONAL_PACKAGES[@]}"; do
+    if ! sudo dnf5 install -y "$pkg"; then
+        echo "Warning: Optional package $pkg is not available, skipping..."
+    fi
+done
 
 git config --global core.fscache true
 git config --global core.preloadindex true
