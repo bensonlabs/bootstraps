@@ -56,9 +56,18 @@ git config --global gc.auto 256
 echo "=============================================================================="
 echo " STAGE 2: APPLICATION RUNTIMES & REPOSITORIES"
 echo "=============================================================================="
-sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+if ! sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo; then
+    echo "Warning: Failed to add Flathub remote, skipping Flatpak app installs..."
+    SKIP_FLATPAK_INSTALLS=1
+else
+    SKIP_FLATPAK_INSTALLS=0
+fi
 
-sudo flatpak install flathub com.visualstudio.code -y
+if [[ "$SKIP_FLATPAK_INSTALLS" -eq 0 ]]; then
+    if ! sudo flatpak install flathub com.visualstudio.code -y; then
+        echo "Warning: Failed to install com.visualstudio.code, skipping..."
+    fi
+fi
 
 echo "=============================================================================="
 echo " STAGE 2B: DEVELOPER & PRODUCTIVITY APPLICATIONS"
@@ -70,15 +79,24 @@ FLATPAK_APPS=(
     "com.slack.Slack"          # Slack
 )
 
-echo "Installing productivity flatpaks..."
-for app in "${FLATPAK_APPS[@]}"; do
-    (sudo flatpak install flathub "$app" -y) || echo "Warning: Failed to install $app, skipping..."
-done
+if [[ "$SKIP_FLATPAK_INSTALLS" -eq 0 ]]; then
+    echo "Installing productivity flatpaks..."
+    for app in "${FLATPAK_APPS[@]}"; do
+        (sudo flatpak install flathub "$app" -y) || echo "Warning: Failed to install $app, skipping..."
+    done
+else
+    echo "Skipping productivity flatpaks because Flathub could not be configured."
+fi
 
 # Tailscale via DNF (no reliable Flatpak available)
 echo "Installing Tailscale..."
-sudo dnf5 install -y tailscale
-sudo systemctl enable --now tailscaled
+if sudo dnf5 install -y tailscale; then
+    if ! sudo systemctl enable --now tailscaled; then
+        echo "Warning: Tailscale installed but tailscaled could not be enabled/started."
+    fi
+else
+    echo "Warning: Failed to install tailscale, skipping service enablement."
+fi
 
 echo "=============================================================================="
 echo " STAGE 3: LOCAL AI ENGINE (OLLAMA) - SKIPPED"
@@ -102,23 +120,39 @@ hash -r
 
 # Claude Code via npm
 echo "Installing Claude Code..."
-npm install -g @anthropic-ai/claude-code
-hash -r
+if npm install -g @anthropic-ai/claude-code; then
+    hash -r
+else
+    echo "Warning: Failed to install Claude Code, skipping..."
+fi
 
 # Codex CLI (official OpenAI installer)
 echo "Installing Codex CLI..."
-curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh
+if ! (curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh); then
+    echo "Warning: Failed to install Codex CLI, skipping..."
+fi
+hash -r
 
 # Zed IDE
 echo "Installing Zed IDE..."
-curl -fsSL https://zed.dev/install.sh | sh
+if ! (curl -fsSL https://zed.dev/install.sh | sh); then
+    echo "Warning: Failed to install Zed IDE, skipping..."
+fi
+hash -r
 
 # Google Antigravity CLI (binary: agy)
 echo "Installing Google Antigravity CLI..."
-curl -fsSL https://antigravity.google/cli/install.sh | bash
+if ! (curl -fsSL https://antigravity.google/cli/install.sh | bash); then
+    echo "Warning: Failed to install Google Antigravity CLI, skipping..."
+fi
+hash -r
 
-# Github Copilot CLI
-curl -fsSL https://gh.io/copilot-install | bash
+# GitHub Copilot CLI
+echo "Installing GitHub Copilot CLI..."
+if ! (curl -fsSL https://gh.io/copilot-install | bash); then
+    echo "Warning: Failed to install GitHub Copilot CLI, skipping..."
+fi
+hash -r
 
 echo "=============================================================================="
 echo " STAGE 5: SYSTEM PRODUCTION VERIFICATION"
@@ -131,7 +165,7 @@ node --version
 npm --version
 echo ""
 echo "--- NPM GLOBALS ---"
-npm list -g --depth=0
+npm list -g --depth=0 || echo "WARN: Unable to list global npm packages"
 echo ""
 echo "--- AI TOOLING ---"
 claude --version 2>/dev/null || echo "WARN: Claude Code not in PATH (run: export PATH=\"\$HOME/.npm-global/bin:\$PATH\")"
@@ -141,7 +175,7 @@ agy --version 2>/dev/null || echo "WARN: Antigravity CLI not in PATH (re-source 
 zed --version 2>/dev/null || echo "WARN: Zed not in PATH"
 echo ""
 echo "--- SYSTEM SERVICES ---"
-tailscale version
+tailscale version 2>/dev/null || echo "WARN: Tailscale not installed or not in PATH"
 echo ""
 echo "--- FLATPAKS ---"
 flatpak list --app --columns=application | grep -E "visualstudio|brave|bitwarden|obsidian|slack" || echo "WARN: Some flatpaks may be missing"
