@@ -116,6 +116,24 @@ run_optional_pipe_step() {
     fi
 }
 
+ensure_xcode_clt() {
+    if xcode-select -p >/dev/null 2>&1; then
+        record_success "Xcode Command Line Tools already configured"
+        return 0
+    fi
+
+    warn "Xcode Command Line Tools are required before Homebrew can install"
+    log "Launching 'xcode-select --install'... you will need to click Install in the macOS dialog, then rerun this script after installation completes."
+    if xcode-select --install >> "$BOOTSTRAP_LOG" 2>&1; then
+        record_success "Triggered Xcode Command Line Tools installer"
+    else
+        warn "xcode-select --install did not complete successfully; it may already be in progress"
+    fi
+
+    fatal "Xcode Command Line Tools must be installed manually before continuing"
+    return 1
+}
+
 check_brew_health() {
     log "Running Homebrew health preflight..."
 
@@ -330,6 +348,7 @@ log " macOS major version: $MACOS_MAJOR_VERSION"
 log "=============================================================================="
 
 print_stage "STAGE 0: PACKAGE MANAGER PREFLIGHT"
+ensure_xcode_clt || exit 1
 ensure_homebrew || exit 1
 check_brew_health
 
