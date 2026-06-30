@@ -385,7 +385,7 @@ ensure_npm_global_path || exit 1
 install_shell_cli "Claude Code" "npm install -g @anthropic-ai/claude-code" claude
 install_shell_cli "Codex CLI" "npm install -g @openai/codex" codex
 install_shell_cli "Google Antigravity CLI" "curl -fsSL https://antigravity.google/cli/install.sh | bash" agy
-install_shell_cli "GitHub Copilot CLI" "curl -fsSL https://gh.io/copilot-install | bash" copilot
+install_shell_cli "GitHub Copilot CLI" "PREFIX=$HOME/.npm-global bash -c 'curl -fsSL https://gh.io/copilot-install | bash'" copilot
 
 print_stage "STAGE 3: GUI APPLICATIONS"
 install_brew_casks
