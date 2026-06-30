@@ -12,6 +12,8 @@ SUCCESSES=()
 ARCH="$(uname -m)"
 MACOS_MAJOR_VERSION="$(sw_vers -productVersion | cut -d. -f1)"
 FATAL_ERROR=0
+BREW_PKG_URL="https://github.com/Homebrew/brew/releases/latest/download/Homebrew.pkg"
+BREW_PKG_PATH="/tmp/Homebrew.pkg"
 
 BREW_PACKAGES=(
     git
@@ -152,12 +154,11 @@ ensure_homebrew() {
     if command -v brew >/dev/null 2>&1; then
         record_success "Homebrew already installed"
     else
-        log "Installing Homebrew unattended..."
-        NONINTERACTIVE=1 CI=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" >> "$BOOTSTRAP_LOG" 2>&1 || {
-            fatal "Install Homebrew failed"
-            return 1
-        }
-        record_success "Installed Homebrew"
+        log "Installing Homebrew silently via macOS pkg installer..."
+        run_step "Download Homebrew pkg installer" curl -fsSL -o "$BREW_PKG_PATH" "$BREW_PKG_URL" || return 1
+        run_step "Install Homebrew pkg" sudo installer -pkg "$BREW_PKG_PATH" -target / || return 1
+        run_optional_step "Remove Homebrew pkg installer" rm -f "$BREW_PKG_PATH"
+        record_success "Installed Homebrew via pkg"
     fi
 
     if [[ -x /opt/homebrew/bin/brew ]]; then
