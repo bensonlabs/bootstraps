@@ -50,6 +50,10 @@ These should be installed on all four platforms where packaging is available.
 | ChatGPT | yes | yes | yes | yes |
 | Claude Desktop | yes | yes | yes | yes |
 | Zed | yes | yes | yes | yes |
+| Google Antigravity IDE/app | yes* | yes* | yes* | yes |
+| GitHub Copilot desktop app | yes* | yes* | yes* | yes |
+
+`*` Required where packaging or a reliable unattended installer path is available. If not scriptable on a given platform, treat as a required manual follow-up for full parity.
 
 ## Optional Cross-Platform GUI Applications
 
@@ -85,12 +89,10 @@ User identity may remain machine- or user-specific.
 
 ### Highest priority
 
-- Remove Ollama from Ubuntu script and any remaining references elsewhere.
-- Add `one-file-context` installation to Fedora verification parity if missing.
-- Ensure ChatGPT and Claude Desktop are installed on Ubuntu and Fedora too, not just macOS/Windows.
-- Ensure Zed is installed on Fedora in a way that results in the `zed` command.
-- Ensure Bitwarden is installed on Windows if not already included.
-- Align Codex installation approach so the final user-facing command is consistently `codex`.
+- Ensure Google Antigravity IDE/app is installed on every platform where packaging or a reliable unattended installer exists.
+- Ensure GitHub Copilot desktop app is installed on every platform where packaging or a reliable unattended installer exists.
+- Where either app is not yet scriptable on a platform, document the required manual follow-up step.
+- Keep the final user-facing commands consistent for required CLI tooling.
 
 ### Verification parity
 
@@ -118,6 +120,8 @@ The scripts should converge on this GUI baseline:
 - ChatGPT
 - Claude Desktop
 - Zed
+- Google Antigravity IDE/app
+- GitHub Copilot desktop app
 
 Brave may remain optional.
 
@@ -130,4 +134,5 @@ For each operating system:
 3. Capture terminal output and the generated log file.
 4. Verify all required commands are present.
 5. Verify GUI application presence.
-6. Roll back the snapshot before the next script revision.
+6. Note any manual follow-up steps required for app installs that are not yet scriptable.
+7. Roll back the snapshot before the next script revision.
