@@ -45,7 +45,6 @@ BREW_CASKS=(
 AI_CLI_CHECKS=(
     "Claude Code:claude --version"
     "Codex CLI:codex --version"
-    "Google Antigravity CLI:agy --version"
     "GitHub CLI:gh --version"
     "Node.js:node --version"
     "npm:npm --version"
@@ -251,6 +250,14 @@ verify_github_copilot_cli() {
     fi
 }
 
+verify_agy_cli() {
+    if command -v agy >/dev/null 2>&1; then
+        record_success "Verified Google Antigravity CLI command is present"
+    else
+        warn "Google Antigravity CLI command not found in PATH; continuing"
+    fi
+}
+
 create_ll_wrapper() {
     if ! command -v gls >/dev/null 2>&1; then
         warn "gls not available; skipping ll wrapper creation"
@@ -397,6 +404,7 @@ log ""
 log "--- AI TOOLING ---"
 verify_ai_clis
 verify_github_copilot_cli
+verify_agy_cli
 log ""
 log "--- HOMEBREW PACKAGES ---"
 verify_brew_apps
