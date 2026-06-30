@@ -85,7 +85,8 @@ print_stage() {
 run_step() {
     local description="$1"
     shift
-    if "$@" >> "$BOOTSTRAP_LOG" 2>&1; then
+    log "RUN: $description"
+    if "$@" 2>&1 | tee -a "$BOOTSTRAP_LOG"; then
         record_success "$description"
         return 0
     fi
@@ -97,7 +98,8 @@ run_step() {
 run_optional_step() {
     local description="$1"
     shift
-    if "$@" >> "$BOOTSTRAP_LOG" 2>&1; then
+    log "RUN: $description"
+    if "$@" 2>&1 | tee -a "$BOOTSTRAP_LOG"; then
         record_success "$description"
     else
         warn "$description failed; continuing"
@@ -107,7 +109,8 @@ run_optional_step() {
 run_optional_pipe_step() {
     local description="$1"
     local command="$2"
-    if bash -c "$command" >> "$BOOTSTRAP_LOG" 2>&1; then
+    log "RUN: $description"
+    if bash -c "$command" 2>&1 | tee -a "$BOOTSTRAP_LOG"; then
         record_success "$description"
     else
         warn "$description failed; continuing"
@@ -116,7 +119,7 @@ run_optional_pipe_step() {
 
 ensure_sudo_session() {
     log "Requesting sudo access for system-level install steps..."
-    if sudo -v >> "$BOOTSTRAP_LOG" 2>&1; then
+    if sudo -v 2>&1 | tee -a "$BOOTSTRAP_LOG"; then
         record_success "Cached sudo credentials"
     else
         fatal "Unable to obtain sudo credentials"
@@ -132,7 +135,7 @@ ensure_xcode_clt() {
 
     warn "Xcode Command Line Tools are required before Homebrew can install"
     log "Launching 'xcode-select --install'... you will need to click Install in the macOS dialog, then rerun this script after installation completes."
-    if xcode-select --install >> "$BOOTSTRAP_LOG" 2>&1; then
+    if xcode-select --install 2>&1 | tee -a "$BOOTSTRAP_LOG"; then
         record_success "Triggered Xcode Command Line Tools installer"
     else
         warn "xcode-select --install did not complete successfully; it may already be in progress"
@@ -146,7 +149,7 @@ check_brew_health() {
     log "Running Homebrew health preflight..."
 
     if command -v brew >/dev/null 2>&1; then
-        if ! brew doctor >> "$BOOTSTRAP_LOG" 2>&1; then
+        if ! brew doctor 2>&1 | tee -a "$BOOTSTRAP_LOG"; then
             warn "brew doctor reported issues; continuing because Homebrew may still be usable"
         else
             record_success "Homebrew health preflight passed"
@@ -234,7 +237,7 @@ install_shell_cli() {
     fi
 
     log "Installing $description..."
-    if bash -c "$command" >> "$BOOTSTRAP_LOG" 2>&1; then
+    if bash -c "$command" 2>&1 | tee -a "$BOOTSTRAP_LOG"; then
         hash -r
         record_success "Installed $description"
     else
