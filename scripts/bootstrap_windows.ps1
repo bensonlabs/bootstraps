@@ -2,10 +2,8 @@
 # UNATTENDED AI DEVELOPMENT ENVIRONMENT BOOTSTRAP - WINDOWS 11
 # ==============================================================================
 
-# 1. Elevate Execution Policy for the life of this process
+$ErrorActionPreference = 'Stop'
 Set-ExecutionPolicy RemoteSigned -Scope Process -Force
-
-# 2. Force modern TLS 1.2 encryption so Windows can talk to download servers
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $BootstrapLog = "$env:USERPROFILE\bootstrap_windows_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
@@ -15,6 +13,8 @@ $OsVersion = (Get-CimInstance Win32_OperatingSystem).Caption
 $PowerToysVersion = "0.99.1"
 $PythonVersion = "3.13"
 $PythonShortVersion = $PythonVersion -replace "\.", ""
+$FatalError = $false
+$WslScriptPath = "$env:USERPROFILE\Desktop\wsl_bootstrap.ps1"
 
 function Write-Log {
     param([string]$Message)
@@ -34,6 +34,13 @@ function Add-Warning {
     Write-Log "WARN: $Message"
 }
 
+function Set-Fatal {
+    param([string]$Message)
+    $script:FatalError = $true
+    $Warnings.Add("FATAL: $Message")
+    Write-Log "FATAL: $Message"
+}
+
 function Print-Stage {
     param([string]$Title)
     $line = "=" * 78
@@ -42,11 +49,32 @@ function Print-Stage {
     Write-Log $line
 }
 
+function Invoke-RequiredStep {
+    param([string]$Description, [scriptblock]$ScriptBlock)
+    try {
+        $output = & $ScriptBlock 2>&1
+        if ($null -ne $output) {
+            Add-Content -Path $BootstrapLog -Value ($output | Out-String).TrimEnd() -ErrorAction SilentlyContinue
+        }
+        if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
+            Set-Fatal "$Description exited with code $LASTEXITCODE"
+            return $false
+        }
+        Record-Success $Description
+        return $true
+    } catch {
+        Set-Fatal "$Description failed: $($_.Exception.Message)"
+        return $false
+    }
+}
+
 function Invoke-OptionalStep {
     param([string]$Description, [scriptblock]$ScriptBlock)
     try {
         $output = & $ScriptBlock 2>&1
-        Add-Content -Path $BootstrapLog -Value ($output | Out-String).TrimEnd() -ErrorAction SilentlyContinue
+        if ($null -ne $output) {
+            Add-Content -Path $BootstrapLog -Value ($output | Out-String).TrimEnd() -ErrorAction SilentlyContinue
+        }
         if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
             Add-Warning "$Description exited with code $LASTEXITCODE; continuing"
         } else {
@@ -57,12 +85,34 @@ function Invoke-OptionalStep {
     }
 }
 
+function Test-CommandExists {
+    param([string]$Name)
+    return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
+}
+
+function Test-WingetPackageInstalled {
+    param([string]$Id)
+    try {
+        $output = & winget list --id $Id -e --accept-source-agreements 2>&1 | Out-String
+        Add-Content -Path $BootstrapLog -Value $output.TrimEnd() -ErrorAction SilentlyContinue
+        return ($output -match [regex]::Escape($Id)) -and ($LASTEXITCODE -eq 0)
+    } catch {
+        return $false
+    }
+}
+
 function Invoke-WingetInstall {
     param(
         [string]$Description,
         [string]$Id,
         [string]$Source = "winget"
     )
+
+    if (Test-WingetPackageInstalled -Id $Id) {
+        Record-Success "$Description already installed"
+        return
+    }
+
     $wingetArgs = @("install", "--id", $Id, "-e", "--accept-package-agreements", "--accept-source-agreements")
     if ($Source -ne "winget") {
         $wingetArgs += @("--source", $Source)
@@ -70,7 +120,6 @@ function Invoke-WingetInstall {
     try {
         $output = & winget @wingetArgs 2>&1
         Add-Content -Path $BootstrapLog -Value ($output | Out-String).TrimEnd() -ErrorAction SilentlyContinue
-        # 0 = success; -1978335189 = already installed (treat as success)
         if ($LASTEXITCODE -eq 0 -or $LASTEXITCODE -eq -1978335189) {
             Record-Success "Installed: $Description"
         } else {
@@ -86,6 +135,100 @@ function Refresh-Path {
     Record-Success "Refreshed PATH"
 }
 
+function Test-RegistryValueMatches {
+    param(
+        [string]$Path,
+        [string]$Name,
+        [string]$ExpectedValue
+    )
+
+    try {
+        $current = (Get-ItemProperty -Path $Path -ErrorAction Stop).$Name
+        return $current -eq $ExpectedValue
+    } catch {
+        return $false
+    }
+}
+
+function Test-PowerToysInstalled {
+    $paths = @(
+        "$env:ProgramFiles\PowerToys\PowerToys.exe",
+        "$env:LOCALAPPDATA\PowerToys\PowerToys.exe"
+    )
+    foreach ($path in $paths) {
+        if (Test-Path $path) { return $true }
+    }
+    return $false
+}
+
+function Test-NpmGlobalInstalled {
+    param([string]$PackageName)
+    try {
+        $output = & npm list -g $PackageName --depth=0 2>&1 | Out-String
+        Add-Content -Path $BootstrapLog -Value $output.TrimEnd() -ErrorAction SilentlyContinue
+        return $output -match [regex]::Escape($PackageName)
+    } catch {
+        return $false
+    }
+}
+
+function Install-NpmCliIfMissing {
+    param(
+        [string]$Description,
+        [string]$CommandName,
+        [string]$PackageName,
+        [scriptblock]$InstallScript
+    )
+
+    if (Test-CommandExists $CommandName) {
+        Record-Success "$Description already installed"
+        return
+    }
+
+    if (Test-NpmGlobalInstalled $PackageName) {
+        Record-Success "$Description package already installed"
+        Refresh-Path
+        return
+    }
+
+    Invoke-OptionalStep "Install $Description" $InstallScript
+    Refresh-Path
+}
+
+function Test-AdminSession {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function Test-WingetAvailable {
+    return Test-CommandExists "winget"
+}
+
+function Invoke-PreflightChecks {
+    if (-not (Test-AdminSession)) {
+        Set-Fatal "This script must be run from an elevated PowerShell session"
+        return $false
+    }
+
+    if (-not (Test-WingetAvailable)) {
+        Set-Fatal "winget is not available on this system"
+        return $false
+    }
+
+    if (-not (Invoke-RequiredStep "Verify network connectivity" {
+        while (!(Test-Connection -ComputerName 8.8.8.8 -Count 1 -ErrorAction SilentlyContinue)) {
+            Write-Log "Waiting for network connectivity..."
+            Start-Sleep -Seconds 3
+        }
+    })) {
+        return $false
+    }
+
+    Record-Success "Windows bootstrap preflight passed"
+    return $true
+}
+
 function Print-Summary {
     Write-Log ""
     $line = "=" * 78
@@ -96,6 +239,7 @@ function Print-Summary {
     Write-Log "OS: $OsVersion"
     Write-Log "Successful steps: $($Successes.Count)"
     Write-Log "Warnings: $($Warnings.Count)"
+    Write-Log "Fatal error state: $FatalError"
     Write-Log ""
     Write-Log "Successful items:"
     foreach ($item in $Successes) { Write-Log "  - $item" }
@@ -117,15 +261,12 @@ Write-Log " Log file: $BootstrapLog"
 Write-Log " OS: $OsVersion"
 Write-Log ("=" * 78)
 
-# 3. Network Connection Gateway: Wait for Hyper-V Virtual Switch to assign an IP
-Write-Log "Checking internet connection..."
-while (!(Test-Connection -ComputerName 8.8.8.8 -Count 1 -ErrorAction SilentlyContinue)) {
-    Write-Log "Waiting for network connectivity..."
-    Start-Sleep -Seconds 3
+Print-Stage "STAGE 0: PACKAGE MANAGER PREFLIGHT"
+if (-not (Invoke-PreflightChecks)) {
+    Print-Summary
+    exit 1
 }
-Record-Success "Internet connection verified"
 
-# 4. Configure PowerShell Package Management (bypasses all NuGet/PSGallery prompts)
 Invoke-OptionalStep "Install NuGet package provider" {
     Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
 }
@@ -133,22 +274,22 @@ Invoke-OptionalStep "Trust PSGallery repository" {
     Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 }
 
-# ==============================================================================
 Print-Stage "STAGE 1: WINDOWS ENVIRONMENT PROVISIONING"
-# ==============================================================================
-
 Invoke-WingetInstall "Modern PowerShell" "Microsoft.PowerShell"
 Invoke-WingetInstall "Windows Terminal" "Microsoft.WindowsTerminal"
 Invoke-WingetInstall "Everything" "voidtools.Everything"
 
-# SILENT POWERTOYS MSI INSTALLATION (bypasses WiX Bootstrapper & pop-up engines)
-Write-Log "Downloading and installing PowerToys via MSI..."
-Invoke-OptionalStep "Install PowerToys" {
-    $ptUrl = "https://github.com/microsoft/PowerToys/releases/download/v$PowerToysVersion/PowerToysSetup-$PowerToysVersion-x64.msi"
-    $ptPath = "$env:TEMP\PowerToysSetup.msi"
-    (New-Object System.Net.WebClient).DownloadFile($ptUrl, $ptPath)
-    Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$ptPath`" /qn /norestart" -Wait
-    Remove-Item -Path $ptPath -Force
+if (Test-PowerToysInstalled) {
+    Record-Success "PowerToys already installed"
+} else {
+    Write-Log "Downloading and installing PowerToys via MSI..."
+    Invoke-OptionalStep "Install PowerToys" {
+        $ptUrl = "https://github.com/microsoft/PowerToys/releases/download/v$PowerToysVersion/PowerToysSetup-$PowerToysVersion-x64.msi"
+        $ptPath = "$env:TEMP\PowerToysSetup.msi"
+        (New-Object System.Net.WebClient).DownloadFile($ptUrl, $ptPath)
+        Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$ptPath`" /qn /norestart" -Wait
+        Remove-Item -Path $ptPath -Force
+    }
 }
 
 Invoke-WingetInstall "Sysinternals Suite" "Microsoft.Sysinternals.Suite"
@@ -166,22 +307,28 @@ Refresh-Path
 Invoke-OptionalStep "Configure git core.fscache" { git config --global core.fscache true }
 Invoke-OptionalStep "Configure git core.preloadindex" { git config --global core.preloadindex true }
 Invoke-OptionalStep "Configure git gc.auto" { git config --global gc.auto 256 }
-Invoke-OptionalStep "Configure git user.name" { git config --global user.name "Justin Benson" }
-Invoke-OptionalStep "Configure git user.email" { git config --global user.email "jbenson.dev@gmail.com" }
+
+if ((git config --global user.name 2>$null) -eq "Justin Benson") {
+    Record-Success "git user.name already configured"
+} else {
+    Invoke-OptionalStep "Configure git user.name" { git config --global user.name "Justin Benson" }
+}
+
+if ((git config --global user.email 2>$null) -eq "jbenson.dev@gmail.com") {
+    Record-Success "git user.email already configured"
+} else {
+    Invoke-OptionalStep "Configure git user.email" { git config --global user.email "jbenson.dev@gmail.com" }
+}
 
 Invoke-OptionalStep "Register Python app path" {
     $pythonPath = (Get-Command python -ErrorAction SilentlyContinue)?.Source
     if (-not $pythonPath) {
-        # Fall back to the conventional install location for the configured version
         $pythonPath = "$env:ProgramFiles\Python$PythonShortVersion\python.exe"
     }
     Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\App Paths\python.exe" -Name "(Default)" -Value $pythonPath
 }
 
-# ==============================================================================
 Print-Stage "STAGE 2: CONTAINERIZATION & VIRTUALIZATION"
-# ==============================================================================
-
 Invoke-OptionalStep "Enable WSL2" { wsl --install --no-launch }
 Invoke-WingetInstall "Docker Desktop" "Docker.DockerDesktop"
 
@@ -195,51 +342,50 @@ Invoke-OptionalStep "Pre-accept Docker Desktop license" {
     '{"wslEngineEnabled":true,"displayedTutorial":true,"acceptLicense":true}' | Out-File -FilePath $dockerSettingsPath -Encoding utf8 -Force
 }
 
-Invoke-OptionalStep "Start Docker Desktop daemon" {
-    $dockerExe = "$env:ProgramFiles\Docker\Docker\Docker Desktop.exe"
-    if (Test-Path $dockerExe) {
-        Start-Process $dockerExe -WindowStyle Hidden
-    } else {
-        throw "Docker Desktop executable not found at: $dockerExe"
+if (Get-Process -Name "Docker Desktop" -ErrorAction SilentlyContinue) {
+    Record-Success "Docker Desktop already running"
+} else {
+    Invoke-OptionalStep "Start Docker Desktop daemon" {
+        $dockerExe = "$env:ProgramFiles\Docker\Docker\Docker Desktop.exe"
+        if (Test-Path $dockerExe) {
+            Start-Process $dockerExe -WindowStyle Hidden
+        } else {
+            throw "Docker Desktop executable not found at: $dockerExe"
+        }
     }
 }
 
-# ==============================================================================
 Print-Stage "STAGE 3: POWERSHELL MODULES & WINDOWS AI APPLICATIONS"
-# ==============================================================================
-
 Invoke-OptionalStep "Install PSScriptAnalyzer" {
-    Install-Module -Name PSScriptAnalyzer -Force -SkipPublisherCheck -Scope AllUsers
+    if (Get-Module -ListAvailable -Name PSScriptAnalyzer) {
+        Write-Output "PSScriptAnalyzer already installed"
+    } else {
+        Install-Module -Name PSScriptAnalyzer -Force -SkipPublisherCheck -Scope AllUsers
+    }
 }
 
 Invoke-WingetInstall "Claude Desktop" "Anthropic.Claude"
-# Official OpenAI ChatGPT app (bypasses MS Store UI interactions)
 Invoke-WingetInstall "ChatGPT" "9NT1R1C2HH7J" -Source "msstore"
 
-# ==============================================================================
 Print-Stage "STAGE 4: WINDOWS AI CLI TOOLS"
-# ==============================================================================
-
-Invoke-OptionalStep "Install Claude Code" { npm install -g @anthropic-ai/claude-code }
-Invoke-OptionalStep "Install Codex CLI" { npm install -g @openai/codex }
+Install-NpmCliIfMissing "Claude Code" "claude" "@anthropic-ai/claude-code" { npm install -g @anthropic-ai/claude-code }
+Install-NpmCliIfMissing "Codex CLI" "codex" "@openai/codex" { npm install -g @openai/codex }
 Invoke-WingetInstall "Google Antigravity" "Google.Antigravity"
-# Note: Invoke-RestMethod + Invoke-Expression is the vendor-documented install method for this CLI.
-# Verify the URL is trusted before running on a machine with sensitive data.
-Invoke-OptionalStep "Install Google Antigravity CLI" {
-    $script = Invoke-RestMethod -Uri "https://antigravity.google/cli/install.ps1"
-    if ([string]::IsNullOrWhiteSpace($script)) {
-        throw "Downloaded install script is empty; aborting execution"
+if (Test-CommandExists "agy") {
+    Record-Success "Google Antigravity CLI already installed"
+} else {
+    Invoke-OptionalStep "Install Google Antigravity CLI" {
+        $script = Invoke-RestMethod -Uri "https://antigravity.google/cli/install.ps1"
+        if ([string]::IsNullOrWhiteSpace($script)) {
+            throw "Downloaded install script is empty; aborting execution"
+        }
+        Invoke-Expression $script
     }
-    Invoke-Expression $script
+    Refresh-Path
 }
-Invoke-OptionalStep "Install one-file-context" { npm install -g one-file-context }
+Install-NpmCliIfMissing "one-file-context" "one-file-context" "one-file-context" { npm install -g one-file-context }
 
-Refresh-Path
-
-# ==============================================================================
 Print-Stage "STAGE 5: WINDOWS STACK VERIFICATION"
-# ==============================================================================
-
 Write-Log "--- CORE TOOLS ---"
 Invoke-OptionalStep "Check git version" { git --version }
 Invoke-OptionalStep "Check gh version" { gh --version }
@@ -257,13 +403,7 @@ Invoke-OptionalStep "Check Google Antigravity CLI version" { agy --version }
 Write-Log "------------------------------------------------"
 Write-Log "Windows bootstrap stage complete."
 
-Print-Summary
-
-# ==============================================================================
 Print-Stage "STAGE 6: GENERATE POST-REBOOT WSL PROVISIONER & SCHEDULER"
-# ==============================================================================
-
-$wslScriptPath = "$env:USERPROFILE\Desktop\wsl_bootstrap.ps1"
 
 @'
 # ==============================================================================
@@ -297,7 +437,9 @@ function Invoke-WslOptionalStep {
     param([string]$Description, [scriptblock]$ScriptBlock)
     try {
         $output = & $ScriptBlock 2>&1
-        Add-Content -Path $WslLog -Value ($output | Out-String).TrimEnd() -ErrorAction SilentlyContinue
+        if ($null -ne $output) {
+            Add-Content -Path $WslLog -Value ($output | Out-String).TrimEnd() -ErrorAction SilentlyContinue
+        }
         if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
             Add-WslWarning "$Description exited with code $LASTEXITCODE; continuing"
         } else {
@@ -373,13 +515,24 @@ Print-WslSummary
 Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -Name "WSLBootstrap" -ErrorAction SilentlyContinue
 Write-Host "WSL Ubuntu Environment configuration complete! Press any key to exit."
 Pause
-'@ | Out-File -FilePath $wslScriptPath -Encoding utf8 -Force
+'@ | Out-File -FilePath $WslScriptPath -Encoding utf8 -Force
 
-Record-Success "Generated WSL bootstrap script: $wslScriptPath"
+Record-Success "Generated WSL bootstrap script: $WslScriptPath"
 
-# Register the script to run automatically with explicit Bypass privileges on next login
-Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -Name "WSLBootstrap" -Value "powershell.exe -ExecutionPolicy Bypass -NoExit -File `"$wslScriptPath`""
-Record-Success "Registered WSL bootstrap in RunOnce"
+$currentRunOnce = (Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -ErrorAction SilentlyContinue).WSLBootstrap
+$desiredRunOnce = "powershell.exe -ExecutionPolicy Bypass -NoExit -File `"$WslScriptPath`""
+if ($currentRunOnce -eq $desiredRunOnce) {
+    Record-Success "WSL bootstrap RunOnce already configured"
+} else {
+    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -Name "WSLBootstrap" -Value $desiredRunOnce
+    Record-Success "Registered WSL bootstrap in RunOnce"
+}
+
+Print-Summary
+
+if ($FatalError) {
+    exit 1
+}
 
 Write-Log ""
 Write-Log "Windows stage complete. Rebooting VM in 5 seconds to initialize WSL2..."
