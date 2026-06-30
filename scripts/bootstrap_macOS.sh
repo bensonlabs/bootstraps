@@ -47,7 +47,6 @@ AI_CLI_CHECKS=(
     "Codex CLI:codex --version"
     "GitHub Copilot CLI:copilot --version"
     "Google Antigravity CLI:agy --version"
-    "one-file-context:one-file-context --help"
     "Zed:zed --version"
     "GitHub CLI:gh --version"
     "Node.js:node --version"
@@ -115,6 +114,16 @@ run_optional_pipe_step() {
         record_success "$description"
     else
         warn "$description failed; continuing"
+    fi
+}
+
+ensure_sudo_session() {
+    log "Requesting sudo access for system-level install steps..."
+    if sudo -v >> "$BOOTSTRAP_LOG" 2>&1; then
+        record_success "Cached sudo credentials"
+    else
+        fatal "Unable to obtain sudo credentials"
+        return 1
     fi
 }
 
@@ -349,6 +358,7 @@ log " macOS major version: $MACOS_MAJOR_VERSION"
 log "=============================================================================="
 
 print_stage "STAGE 0: PACKAGE MANAGER PREFLIGHT"
+ensure_sudo_session || exit 1
 ensure_xcode_clt || exit 1
 ensure_homebrew || exit 1
 check_brew_health
@@ -364,7 +374,6 @@ install_shell_cli "Codex CLI" "npm install -g @openai/codex" codex
 install_shell_cli "Google Antigravity CLI" "curl -fsSL https://antigravity.google/cli/install.sh | bash" agy
 install_shell_cli "GitHub Copilot CLI" "curl -fsSL https://gh.io/copilot-install | bash" copilot
 install_shell_cli "Zed IDE" "curl -fsSL https://zed.dev/install.sh | sh" zed
-install_shell_cli "one-file-context" "npm install -g one-file-context" one-file-context
 
 print_stage "STAGE 3: GUI APPLICATIONS"
 install_brew_casks
