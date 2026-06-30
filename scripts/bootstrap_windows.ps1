@@ -135,21 +135,6 @@ function Refresh-Path {
     Record-Success "Refreshed PATH"
 }
 
-function Test-RegistryValueMatches {
-    param(
-        [string]$Path,
-        [string]$Name,
-        [string]$ExpectedValue
-    )
-
-    try {
-        $current = (Get-ItemProperty -Path $Path -ErrorAction Stop).$Name
-        return $current -eq $ExpectedValue
-    } catch {
-        return $false
-    }
-}
-
 function Test-PowerToysInstalled {
     $paths = @(
         "$env:ProgramFiles\PowerToys\PowerToys.exe",
@@ -301,6 +286,11 @@ Invoke-WingetInstall "Python $PythonVersion" "Python.Python.$PythonVersion"
 Invoke-WingetInstall "Visual Studio Code" "Microsoft.VisualStudioCode"
 Invoke-WingetInstall "Node.js LTS" "OpenJS.NodeJS.LTS"
 Invoke-WingetInstall "Slack" "SlackTechnologies.SlackS"
+Invoke-WingetInstall "Bitwarden" "Bitwarden.Bitwarden"
+Invoke-WingetInstall "Obsidian" "Obsidian.Obsidian"
+Invoke-WingetInstall "ChatGPT" "9NT1R1C2HH7J" -Source "msstore"
+Invoke-WingetInstall "Claude Desktop" "Anthropic.Claude"
+Invoke-WingetInstall "Zed" "ZedIndustries.Zed"
 
 Refresh-Path
 
@@ -355,19 +345,7 @@ if (Get-Process -Name "Docker Desktop" -ErrorAction SilentlyContinue) {
     }
 }
 
-Print-Stage "STAGE 3: POWERSHELL MODULES & WINDOWS AI APPLICATIONS"
-Invoke-OptionalStep "Install PSScriptAnalyzer" {
-    if (Get-Module -ListAvailable -Name PSScriptAnalyzer) {
-        Write-Output "PSScriptAnalyzer already installed"
-    } else {
-        Install-Module -Name PSScriptAnalyzer -Force -SkipPublisherCheck -Scope AllUsers
-    }
-}
-
-Invoke-WingetInstall "Claude Desktop" "Anthropic.Claude"
-Invoke-WingetInstall "ChatGPT" "9NT1R1C2HH7J" -Source "msstore"
-
-Print-Stage "STAGE 4: WINDOWS AI CLI TOOLS"
+Print-Stage "STAGE 3: WINDOWS AI CLI TOOLS"
 Install-NpmCliIfMissing "Claude Code" "claude" "@anthropic-ai/claude-code" { npm install -g @anthropic-ai/claude-code }
 Install-NpmCliIfMissing "Codex CLI" "codex" "@openai/codex" { npm install -g @openai/codex }
 Invoke-WingetInstall "Google Antigravity" "Google.Antigravity"
@@ -383,15 +361,18 @@ if (Test-CommandExists "agy") {
     }
     Refresh-Path
 }
+Install-NpmCliIfMissing "GitHub Copilot CLI" "copilot" "@github/copilot" { npm install -g @github/copilot }
 Install-NpmCliIfMissing "one-file-context" "one-file-context" "one-file-context" { npm install -g one-file-context }
 
-Print-Stage "STAGE 5: WINDOWS STACK VERIFICATION"
+Print-Stage "STAGE 4: WINDOWS STACK VERIFICATION"
 Write-Log "--- CORE TOOLS ---"
 Invoke-OptionalStep "Check git version" { git --version }
 Invoke-OptionalStep "Check gh version" { gh --version }
 Invoke-OptionalStep "Check python version" { python --version }
 Invoke-OptionalStep "Check node version" { node --version }
-Invoke-OptionalStep "Check docker version" { docker --version }
+Invoke-OptionalStep "Check npm version" { npm --version }
+Invoke-OptionalStep "Check ripgrep version" { rg --version }
+Invoke-OptionalStep "Check fastfetch version" { fastfetch --version }
 Write-Log ""
 Write-Log "--- NPM GLOBALS ---"
 Invoke-OptionalStep "List global npm packages" { npm list -g --depth=0 }
@@ -400,10 +381,11 @@ Invoke-OptionalStep "Check Claude Code version" { claude --version }
 Invoke-OptionalStep "Check Codex CLI version" { codex --version }
 Invoke-OptionalStep "Check GitHub Copilot CLI version" { copilot --version }
 Invoke-OptionalStep "Check Google Antigravity CLI version" { agy --version }
+Invoke-OptionalStep "Check one-file-context" { one-file-context --help }
 Write-Log "------------------------------------------------"
 Write-Log "Windows bootstrap stage complete."
 
-Print-Stage "STAGE 6: GENERATE POST-REBOOT WSL PROVISIONER & SCHEDULER"
+Print-Stage "STAGE 5: GENERATE POST-REBOOT WSL PROVISIONER & SCHEDULER"
 
 @'
 # ==============================================================================
@@ -485,7 +467,7 @@ Invoke-WslOptionalStep "Install WSL2 Ubuntu distribution" {
 }
 
 Invoke-WslOptionalStep "Update Linux packages" {
-    wsl -u root -e bash -c "apt-get update && apt-get install -y curl git build-essential"
+    wsl -u root -e bash -c "apt-get update && apt-get install -y curl git build-essential python3 python3-pip ripgrep p7zip-full"
 }
 
 Invoke-WslOptionalStep "Install Node.js LTS in WSL" {
@@ -498,7 +480,7 @@ Invoke-WslOptionalStep "Configure shared Git credentials in WSL" {
 }
 
 Invoke-WslOptionalStep "Install AI CLI tools in WSL" {
-    wsl -u root -e bash -c "npm install -g @anthropic-ai/claude-code @openai/codex google-antigravity-cli one-file-context"
+    wsl -u root -e bash -c "npm install -g @anthropic-ai/claude-code @openai/codex one-file-context"
 }
 
 Write-WslLog ""
@@ -506,6 +488,7 @@ Write-WslLog "--- VERIFYING WSL STACK ---"
 Invoke-WslOptionalStep "Check WSL Ubuntu release" { wsl -e lsb_release -a }
 Invoke-WslOptionalStep "Check WSL git version" { wsl -e git --version }
 Invoke-WslOptionalStep "Check WSL node version" { wsl -e node --version }
+Invoke-WslOptionalStep "Check WSL python version" { wsl -e python3 --version }
 Invoke-WslOptionalStep "List WSL global npm packages" { wsl -e npm list -g --depth=0 }
 Write-WslLog "----------------------------"
 Write-WslLog "WSL bootstrap complete."
