@@ -21,18 +21,23 @@ BASE_PACKAGES=(
     build-essential
     p7zip-full
     htop
+    python3
     python3-pip
     fastfetch
     flatpak
     zstd
     lsb-release
+    ripgrep
 )
 
 FLATPAK_APPS=(
+    com.visualstudio.code
     com.brave.Browser
     com.bitwarden.desktop
     md.obsidian.Obsidian
     com.slack.Slack
+    com.openai.chatgpt
+    com.anthropic.claude
 )
 
 AI_CLI_CHECKS=(
@@ -40,10 +45,17 @@ AI_CLI_CHECKS=(
     "Codex CLI:codex --version"
     "GitHub Copilot CLI:copilot --version"
     "Google Antigravity CLI:agy --version"
-    "Ollama:ollama --version"
+    "one-file-context:one-file-context --help"
     "Zed:zed --version"
     "VS Code:code --version"
     "GitHub CLI:gh --version"
+    "Node.js:node --version"
+    "npm:npm --version"
+    "Python:python3 --version"
+    "pip:pip3 --version"
+    "ripgrep:rg --version"
+    "fastfetch:fastfetch --version"
+    "7zip:7z"
 )
 
 log() {
@@ -233,20 +245,6 @@ install_desktop_packages() {
     done < <(get_desktop_packages)
 }
 
-install_ollama() {
-    if command -v ollama >/dev/null 2>&1; then
-        record_success "Ollama already installed"
-    else
-        run_optional_pipe_step "Install Ollama" "curl -fsSL https://ollama.com/install.sh | sh"
-    fi
-
-    if systemctl is-enabled ollama >> "$BOOTSTRAP_LOG" 2>&1 && systemctl is-active ollama >> "$BOOTSTRAP_LOG" 2>&1; then
-        record_success "Ollama service already enabled and running"
-    else
-        run_optional_step "Enable and start Ollama service" sudo systemctl enable --now ollama
-    fi
-}
-
 ensure_npm_global_path() {
     if ! command -v npm >/dev/null 2>&1; then
         warn "npm is not available; skipping npm global path setup"
@@ -400,10 +398,7 @@ install_flatpaks
 install_desktop_packages
 check_snap_state
 
-print_stage "STAGE 3: LOCAL AI ENGINE DEPLOYMENT (OLLAMA)"
-install_ollama
-
-print_stage "STAGE 4: CLOUD AI CLI TOOLING"
+print_stage "STAGE 3: CLOUD AI CLI TOOLING"
 install_nodejs
 ensure_npm_global_path || exit 1
 install_shell_cli "Claude Code" "npm install -g @anthropic-ai/claude-code" claude
@@ -413,7 +408,7 @@ install_shell_cli "GitHub Copilot CLI" "curl -fsSL https://gh.io/copilot-install
 install_shell_cli "Zed IDE" "curl -fsSL https://zed.dev/install.sh | sh" zed
 install_shell_cli "one-file-context" "npm install -g one-file-context" one-file-context
 
-print_stage "STAGE 5: SYSTEM PRODUCTION VERIFICATION"
+print_stage "STAGE 4: SYSTEM PRODUCTION VERIFICATION"
 log "--- VERIFYING UBUNTU WORKSTATION ENGINE STACK ---"
 run_optional_step "Read Ubuntu release" lsb_release -d
 run_optional_step "Check git version" git --version
