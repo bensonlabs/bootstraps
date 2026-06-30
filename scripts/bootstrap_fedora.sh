@@ -32,6 +32,21 @@ BASE_PACKAGES=(
     flatpak
 )
 
+DEVELOPMENT_PACKAGES=(
+    gcc
+    gcc-c++
+    make
+    automake
+    autoconf
+    kernel-devel
+    cmake
+    pkgconf-pkg-config
+    libtool
+    patch
+    bison
+    flex
+)
+
 FLATPAK_APPS=(
     com.visualstudio.code
     com.brave.Browser
@@ -345,7 +360,7 @@ EOF
 record_success "Configured /etc/dnf/dnf.conf"
 
 run_step "System upgrade" sudo dnf5 upgrade -y || exit 1
-run_step "Development Tools group install" sudo dnf5 group install -y "Development Tools" || exit 1
+run_step "Development package install" sudo dnf5 install -y "${DEVELOPMENT_PACKAGES[@]}" || exit 1
 run_step "Base package install" sudo dnf5 install -y "${BASE_PACKAGES[@]}" || exit 1
 run_optional_step "Git config core.fscache" git config --global core.fscache true
 run_optional_step "Git config core.preloadindex" git config --global core.preloadindex true
