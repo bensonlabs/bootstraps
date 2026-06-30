@@ -21,6 +21,7 @@ BASE_PACKAGES=(
     htop
     util-linux-user
     nodejs
+    python3
     python3-pip
     fastfetch
     btrfs-progs
@@ -36,6 +37,8 @@ FLATPAK_APPS=(
     com.bitwarden.desktop
     md.obsidian.Obsidian
     com.slack.Slack
+    com.openai.chatgpt
+    com.anthropic.claude
 )
 
 AI_CLI_CHECKS=(
@@ -43,8 +46,16 @@ AI_CLI_CHECKS=(
     "Codex CLI:codex --version"
     "GitHub Copilot CLI:copilot --version"
     "Google Antigravity CLI:agy --version"
+    "one-file-context:one-file-context --help"
     "Zed:zed --version"
     "GitHub CLI:gh --version"
+    "Node.js:node --version"
+    "npm:npm --version"
+    "Python:python3 --version"
+    "pip:pip3 --version"
+    "ripgrep:rg --version"
+    "fastfetch:fastfetch --version"
+    "7zip:7z"
 )
 
 log() {
@@ -202,6 +213,12 @@ ensure_npm_global_path() {
 install_shell_cli() {
     local description="$1"
     local command="$2"
+    local binary="$3"
+
+    if command -v "$binary" >/dev/null 2>&1; then
+        record_success "$description already installed"
+        return 0
+    fi
 
     log "Installing $description..."
     if bash -c "$command" >> "$BOOTSTRAP_LOG" 2>&1; then
@@ -308,20 +325,16 @@ install_flatpaks
 install_desktop_packages
 install_tailscale
 
-print_stage "STAGE 3: LOCAL AI ENGINE (OLLAMA) - SKIPPED"
-# Uncomment to enable Ollama
-# curl -fsSL https://ollama.com/install.sh | sh
-# sudo systemctl enable --now ollama
-
-print_stage "STAGE 4: CLOUD AI CLI TOOLING"
+print_stage "STAGE 3: CLOUD AI CLI TOOLING"
 ensure_npm_global_path || exit 1
-install_shell_cli "Claude Code" "npm install -g @anthropic-ai/claude-code"
-install_shell_cli "Codex CLI" "curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh"
-install_shell_cli "Zed IDE" "curl -fsSL https://zed.dev/install.sh | sh"
-install_shell_cli "Google Antigravity CLI" "curl -fsSL https://antigravity.google/cli/install.sh | bash"
-install_shell_cli "GitHub Copilot CLI" "curl -fsSL https://gh.io/copilot-install | bash"
+install_shell_cli "Claude Code" "npm install -g @anthropic-ai/claude-code" claude
+install_shell_cli "Codex CLI" "npm install -g @openai/codex" codex
+install_shell_cli "Zed IDE" "curl -fsSL https://zed.dev/install.sh | sh" zed
+install_shell_cli "Google Antigravity CLI" "curl -fsSL https://antigravity.google/cli/install.sh | bash" agy
+install_shell_cli "GitHub Copilot CLI" "curl -fsSL https://gh.io/copilot-install | bash" copilot
+install_shell_cli "one-file-context" "npm install -g one-file-context" one-file-context
 
-print_stage "STAGE 5: SYSTEM PRODUCTION VERIFICATION"
+print_stage "STAGE 4: SYSTEM PRODUCTION VERIFICATION"
 log "--- VERIFYING FEDORA WORKSTATION ENGINE STACK ---"
 run_optional_step "Read Fedora release" cat /etc/fedora-release
 run_optional_pipe_step "Check gh version" "gh --version"
