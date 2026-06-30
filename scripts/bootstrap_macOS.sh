@@ -4,10 +4,6 @@
 # Designed to be run remotely via:
 # bash <(curl -fsSL https://raw.githubusercontent.com/bensonlabs/bootstraps/main/scripts/bootstrap_macOS.sh)
 # ==============================================================================
-
-echo "Install homebrew.  You will need to interact to install xcode."
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
 set -euo pipefail
 
 BOOTSTRAP_LOG="${HOME}/bootstrap_macos_$(date +%Y%m%d_%H%M%S).log"
@@ -138,7 +134,12 @@ ensure_homebrew() {
     if command -v brew >/dev/null 2>&1; then
         record_success "Homebrew already installed"
     else
-        run_step "Install Homebrew" bash -c 'NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"' || return 1
+        log "Installing Homebrew unattended..."
+        NONINTERACTIVE=1 CI=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" >> "$BOOTSTRAP_LOG" 2>&1 || {
+            fatal "Install Homebrew failed"
+            return 1
+        }
+        record_success "Installed Homebrew"
     fi
 
     if [[ -x /opt/homebrew/bin/brew ]]; then
@@ -329,10 +330,10 @@ log " macOS major version: $MACOS_MAJOR_VERSION"
 log "=============================================================================="
 
 print_stage "STAGE 0: PACKAGE MANAGER PREFLIGHT"
+ensure_homebrew || exit 1
 check_brew_health
 
 print_stage "STAGE 1: HOMEBREW SETUP"
-ensure_homebrew || exit 1
 run_optional_step "Update Homebrew" brew update
 
 print_stage "STAGE 2: CORE CLI TOOLS"
