@@ -9,6 +9,7 @@ WARNINGS=()
 SUCCESSES=()
 DESKTOP_ENV="${XDG_CURRENT_DESKTOP:-unknown}"
 SKIP_FLATPAK_INSTALLS=0
+FATAL_ERROR=0
 
 BASE_PACKAGES=(
     curl
@@ -47,8 +48,7 @@ AI_CLI_CHECKS=(
 )
 
 log() {
-    echo "$*"
-    echo "$*" >> "$BOOTSTRAP_LOG"
+    echo "$*" | tee -a "$BOOTSTRAP_LOG"
 }
 
 record_success() {
@@ -61,11 +61,14 @@ warn() {
     log "WARN: $1"
 }
 
+fatal() {
+    FATAL_ERROR=1
+    WARNINGS+=("FATAL: $1")
+    log "FATAL: $1"
+}
+
 print_stage() {
     local title="$1"
-    echo "=============================================================================="
-    echo " $title"
-    echo "=============================================================================="
     log "=============================================================================="
     log " $title"
     log "=============================================================================="
@@ -79,7 +82,7 @@ run_step() {
         return 0
     fi
 
-    warn "$description failed"
+    fatal "$description failed"
     return 1
 }
 
@@ -103,6 +106,17 @@ run_optional_pipe_step() {
     fi
 }
 
+check_dnf_health() {
+    log "Running DNF health preflight..."
+
+    if ! sudo dnf5 check >> "$BOOTSTRAP_LOG" 2>&1; then
+        fatal "DNF health check failed; package state appears inconsistent. Restore a clean snapshot or repair the system before re-running."
+        return 1
+    fi
+
+    record_success "DNF health preflight passed"
+}
+
 install_flatpaks() {
     local app
 
@@ -115,7 +129,11 @@ install_flatpaks() {
     record_success "Configured Flathub remote"
 
     for app in "${FLATPAK_APPS[@]}"; do
-        run_optional_step "Install Flatpak: $app" sudo flatpak install flathub "$app" -y
+        if flatpak list --app --columns=application | grep -Fxq "$app"; then
+            record_success "Flatpak already installed: $app"
+        else
+            run_optional_step "Install Flatpak: $app" sudo flatpak install flathub "$app" -y
+        fi
     done
 }
 
@@ -137,13 +155,26 @@ install_desktop_packages() {
     local pkg
     while IFS= read -r pkg; do
         [[ -z "$pkg" ]] && continue
-        run_optional_step "Desktop package install: $pkg" sudo dnf5 install -y "$pkg"
+        if rpm -q "$pkg" >> "$BOOTSTRAP_LOG" 2>&1; then
+            record_success "Desktop package already installed: $pkg"
+        else
+            run_optional_step "Desktop package install: $pkg" sudo dnf5 install -y "$pkg"
+        fi
     done < <(get_desktop_packages)
 }
 
 install_tailscale() {
-    run_optional_step "Install tailscale" sudo dnf5 install -y tailscale
-    run_optional_step "Enable and start tailscaled" sudo systemctl enable --now tailscaled
+    if rpm -q tailscale >> "$BOOTSTRAP_LOG" 2>&1; then
+        record_success "tailscale already installed"
+    else
+        run_optional_step "Install tailscale" sudo dnf5 install -y tailscale
+    fi
+
+    if systemctl is-enabled tailscaled >> "$BOOTSTRAP_LOG" 2>&1 && systemctl is-active tailscaled >> "$BOOTSTRAP_LOG" 2>&1; then
+        record_success "tailscaled already enabled and running"
+    else
+        run_optional_step "Enable and start tailscaled" sudo systemctl enable --now tailscaled
+    fi
 }
 
 ensure_npm_global_path() {
@@ -154,9 +185,9 @@ ensure_npm_global_path() {
 
     mkdir -p "$HOME/.npm-global"
     record_success "Ensured npm global directory exists"
-    run_step "Configure npm global prefix" npm config set prefix "$HOME/.npm-global"
+    run_step "Configure npm global prefix" npm config set prefix "$HOME/.npm-global" || return 1
 
-    if ! grep -Fqx 'export PATH="$HOME/.npm-global/bin:$PATH"' "$HOME/.bashrc"; then
+    if ! grep -Fqx 'export PATH="$HOME/.npm-global/bin:$PATH"' "$HOME/.bashrc" 2>/dev/null; then
         echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> "$HOME/.bashrc"
         record_success "Added npm global bin PATH to ~/.bashrc"
     else
@@ -216,6 +247,7 @@ print_summary() {
     echo "Detected desktop: $DESKTOP_ENV"
     echo "Successful steps: ${#SUCCESSES[@]}"
     echo "Warnings: ${#WARNINGS[@]}"
+    echo "Fatal error state: $FATAL_ERROR"
 
     echo ""
     echo "Successful items:"
@@ -237,11 +269,23 @@ print_summary() {
     fi
 }
 
+finish() {
+    print_summary
+    if [[ "$FATAL_ERROR" -ne 0 ]]; then
+        exit 1
+    fi
+}
+
+trap finish EXIT
+
 log "=============================================================================="
 log " FEDORA AI DEV BOOTSTRAP"
 log " Log file: $BOOTSTRAP_LOG"
 log " Detected desktop: $DESKTOP_ENV"
 log "=============================================================================="
+
+print_stage "STAGE 0: PACKAGE MANAGER PREFLIGHT"
+check_dnf_health || exit 1
 
 print_stage "STAGE 1: SYSTEM UPDATES & OPTIMIZATIONS"
 sudo tee /etc/dnf/dnf.conf << 'EOF' >> "$BOOTSTRAP_LOG"
@@ -252,9 +296,9 @@ defaultyes=True
 EOF
 record_success "Configured /etc/dnf/dnf.conf"
 
-run_step "System upgrade" sudo dnf5 upgrade -y
-run_step "Development Tools group install" sudo dnf5 group install development-tools -y
-run_step "Base package install" sudo dnf5 install -y "${BASE_PACKAGES[@]}"
+run_step "System upgrade" sudo dnf5 upgrade -y || exit 1
+run_step "Development Tools group install" sudo dnf5 group install development-tools -y || exit 1
+run_step "Base package install" sudo dnf5 install -y "${BASE_PACKAGES[@]}" || exit 1
 run_optional_step "Git config core.fscache" git config --global core.fscache true
 run_optional_step "Git config core.preloadindex" git config --global core.preloadindex true
 run_optional_step "Git config gc.auto" git config --global gc.auto 256
@@ -270,7 +314,7 @@ print_stage "STAGE 3: LOCAL AI ENGINE (OLLAMA) - SKIPPED"
 # sudo systemctl enable --now ollama
 
 print_stage "STAGE 4: CLOUD AI CLI TOOLING"
-ensure_npm_global_path
+ensure_npm_global_path || exit 1
 install_shell_cli "Claude Code" "npm install -g @anthropic-ai/claude-code"
 install_shell_cli "Codex CLI" "curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh"
 install_shell_cli "Zed IDE" "curl -fsSL https://zed.dev/install.sh | sh"
@@ -280,7 +324,6 @@ install_shell_cli "GitHub Copilot CLI" "curl -fsSL https://gh.io/copilot-install
 print_stage "STAGE 5: SYSTEM PRODUCTION VERIFICATION"
 log "--- VERIFYING FEDORA WORKSTATION ENGINE STACK ---"
 run_optional_step "Read Fedora release" cat /etc/fedora-release
-run_optional_step "Check git version" git --version
 run_optional_pipe_step "Check gh version" "gh --version"
 run_optional_pipe_step "Check node version" "node --version"
 run_optional_pipe_step "Check npm version" "npm --version"
@@ -300,5 +343,3 @@ log "------------------------------------------------"
 log "Bootstrap complete!"
 log ""
 run_optional_step "Run fastfetch" fastfetch
-
-print_summary
