@@ -101,7 +101,8 @@ print_stage() {
 run_step() {
     local description="$1"
     shift
-    if "$@" >> "$BOOTSTRAP_LOG" 2>&1; then
+    log "RUN: $description"
+    if "$@" 2>&1 | tee -a "$BOOTSTRAP_LOG"; then
         record_success "$description"
         return 0
     fi
@@ -113,7 +114,8 @@ run_step() {
 run_optional_step() {
     local description="$1"
     shift
-    if "$@" >> "$BOOTSTRAP_LOG" 2>&1; then
+    log "RUN: $description"
+    if "$@" 2>&1 | tee -a "$BOOTSTRAP_LOG"; then
         record_success "$description"
     else
         warn "$description failed; continuing"
@@ -123,7 +125,8 @@ run_optional_step() {
 run_optional_pipe_step() {
     local description="$1"
     local command="$2"
-    if bash -c "$command" >> "$BOOTSTRAP_LOG" 2>&1; then
+    log "RUN: $description"
+    if bash -c "$command" 2>&1 | tee -a "$BOOTSTRAP_LOG"; then
         record_success "$description"
     else
         warn "$description failed; continuing"
@@ -132,7 +135,7 @@ run_optional_pipe_step() {
 
 ensure_sudo_session() {
     log "Requesting sudo access for system-level install steps..."
-    if sudo -v >> "$BOOTSTRAP_LOG" 2>&1; then
+    if sudo -v 2>&1 | tee -a "$BOOTSTRAP_LOG"; then
         record_success "Cached sudo credentials"
     else
         fatal "Unable to obtain sudo credentials"
@@ -143,7 +146,7 @@ ensure_sudo_session() {
 check_dnf_health() {
     log "Running DNF health preflight..."
 
-    if ! sudo dnf5 check >> "$BOOTSTRAP_LOG" 2>&1; then
+    if ! sudo dnf5 check 2>&1 | tee -a "$BOOTSTRAP_LOG"; then
         fatal "DNF health check failed; package state appears inconsistent. Restore a clean snapshot or repair the system before re-running."
         return 1
     fi
@@ -160,7 +163,7 @@ install_flatpaks() {
         return 0
     fi
 
-    if ! sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo >> "$BOOTSTRAP_LOG" 2>&1; then
+    if ! sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo 2>&1 | tee -a "$BOOTSTRAP_LOG"; then
         warn "Failed to add Flathub remote; skipping Flatpak app installs"
         SKIP_FLATPAK_INSTALLS=1
         return 0
@@ -250,7 +253,7 @@ install_shell_cli() {
     fi
 
     log "Installing $description..."
-    if bash -c "$command" >> "$BOOTSTRAP_LOG" 2>&1; then
+    if bash -c "$command" 2>&1 | tee -a "$BOOTSTRAP_LOG"; then
         hash -r
         record_success "Installed $description"
     else
