@@ -29,6 +29,7 @@ BASE_PACKAGES=(
     btrfs-assistant
     tree
     ripgrep
+    flatpak
 )
 
 FLATPAK_APPS=(
@@ -39,15 +40,12 @@ FLATPAK_APPS=(
     com.slack.Slack
     com.openai.chatgpt
     com.anthropic.claude
+    dev.zed.Zed
 )
 
 AI_CLI_CHECKS=(
     "Claude Code:claude --version"
     "Codex CLI:codex --version"
-    "GitHub Copilot CLI:copilot --version"
-    "Google Antigravity CLI:agy --version"
-    "one-file-context:one-file-context --help"
-    "Zed:zed --version"
     "GitHub CLI:gh --version"
     "Node.js:node --version"
     "npm:npm --version"
@@ -117,6 +115,16 @@ run_optional_pipe_step() {
     fi
 }
 
+ensure_sudo_session() {
+    log "Requesting sudo access for system-level install steps..."
+    if sudo -v >> "$BOOTSTRAP_LOG" 2>&1; then
+        record_success "Cached sudo credentials"
+    else
+        fatal "Unable to obtain sudo credentials"
+        return 1
+    fi
+}
+
 check_dnf_health() {
     log "Running DNF health preflight..."
 
@@ -130,6 +138,12 @@ check_dnf_health() {
 
 install_flatpaks() {
     local app
+
+    if ! command -v flatpak >/dev/null 2>&1; then
+        warn "flatpak is not available; skipping Flatpak app installs"
+        SKIP_FLATPAK_INSTALLS=1
+        return 0
+    fi
 
     if ! sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo >> "$BOOTSTRAP_LOG" 2>&1; then
         warn "Failed to add Flathub remote; skipping Flatpak app installs"
@@ -229,6 +243,22 @@ install_shell_cli() {
     fi
 }
 
+verify_github_copilot_cli() {
+    if command -v copilot >/dev/null 2>&1; then
+        record_success "Verified GitHub Copilot CLI command is present"
+    else
+        warn "GitHub Copilot CLI command not found in PATH; continuing"
+    fi
+}
+
+verify_agy_cli() {
+    if command -v agy >/dev/null 2>&1; then
+        record_success "Verified Google Antigravity CLI command is present"
+    else
+        warn "Google Antigravity CLI command not found in PATH; continuing"
+    fi
+}
+
 verify_ai_clis() {
     local entry description command
     for entry in "${AI_CLI_CHECKS[@]}"; do
@@ -242,7 +272,7 @@ verify_flatpaks() {
     local app
 
     if [[ "$SKIP_FLATPAK_INSTALLS" -eq 1 ]]; then
-        warn "Skipping Flatpak verification because Flathub setup failed"
+        warn "Skipping Flatpak verification because Flatpak setup failed"
         return 0
     fi
 
@@ -302,6 +332,7 @@ log " Detected desktop: $DESKTOP_ENV"
 log "=============================================================================="
 
 print_stage "STAGE 0: PACKAGE MANAGER PREFLIGHT"
+ensure_sudo_session || exit 1
 check_dnf_health || exit 1
 
 print_stage "STAGE 1: SYSTEM UPDATES & OPTIMIZATIONS"
@@ -314,7 +345,7 @@ EOF
 record_success "Configured /etc/dnf/dnf.conf"
 
 run_step "System upgrade" sudo dnf5 upgrade -y || exit 1
-run_step "Development Tools group install" sudo dnf5 group install development-tools -y || exit 1
+run_step "Development Tools group install" sudo dnf5 group install -y "Development Tools" || exit 1
 run_step "Base package install" sudo dnf5 install -y "${BASE_PACKAGES[@]}" || exit 1
 run_optional_step "Git config core.fscache" git config --global core.fscache true
 run_optional_step "Git config core.preloadindex" git config --global core.preloadindex true
@@ -329,10 +360,8 @@ print_stage "STAGE 3: CLOUD AI CLI TOOLING"
 ensure_npm_global_path || exit 1
 install_shell_cli "Claude Code" "npm install -g @anthropic-ai/claude-code" claude
 install_shell_cli "Codex CLI" "npm install -g @openai/codex" codex
-install_shell_cli "Zed IDE" "curl -fsSL https://zed.dev/install.sh | sh" zed
 install_shell_cli "Google Antigravity CLI" "curl -fsSL https://antigravity.google/cli/install.sh | bash" agy
-install_shell_cli "GitHub Copilot CLI" "curl -fsSL https://gh.io/copilot-install | bash" copilot
-install_shell_cli "one-file-context" "npm install -g one-file-context" one-file-context
+install_shell_cli "GitHub Copilot CLI" "PREFIX=$HOME/.npm-global bash -c 'curl -fsSL https://gh.io/copilot-install | bash'" copilot
 
 print_stage "STAGE 4: SYSTEM PRODUCTION VERIFICATION"
 log "--- VERIFYING FEDORA WORKSTATION ENGINE STACK ---"
@@ -346,6 +375,8 @@ run_optional_pipe_step "List global npm packages" "npm list -g --depth=0"
 log ""
 log "--- AI TOOLING ---"
 verify_ai_clis
+verify_github_copilot_cli
+verify_agy_cli
 log ""
 log "--- SYSTEM SERVICES ---"
 run_optional_step "Check Tailscale version" tailscale version
