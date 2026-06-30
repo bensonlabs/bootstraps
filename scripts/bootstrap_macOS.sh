@@ -39,12 +39,12 @@ BREW_CASKS=(
     bitwarden
     slack
     claude
+    zed
 )
 
 AI_CLI_CHECKS=(
     "Claude Code:claude --version"
     "Codex CLI:codex --version"
-    "GitHub Copilot CLI:copilot --version"
     "Google Antigravity CLI:agy --version"
     "GitHub CLI:gh --version"
     "Node.js:node --version"
@@ -243,6 +243,14 @@ install_shell_cli() {
     fi
 }
 
+verify_github_copilot_cli() {
+    if command -v copilot >/dev/null 2>&1; then
+        record_success "Verified GitHub Copilot CLI command is present"
+    else
+        warn "GitHub Copilot CLI command not found in PATH; continuing"
+    fi
+}
+
 create_ll_wrapper() {
     if ! command -v gls >/dev/null 2>&1; then
         warn "gls not available; skipping ll wrapper creation"
@@ -388,6 +396,7 @@ run_optional_pipe_step "List global npm packages" "npm list -g --depth=0"
 log ""
 log "--- AI TOOLING ---"
 verify_ai_clis
+verify_github_copilot_cli
 log ""
 log "--- HOMEBREW PACKAGES ---"
 verify_brew_apps
