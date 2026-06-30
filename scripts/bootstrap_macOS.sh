@@ -4,6 +4,10 @@
 # Designed to be run remotely via:
 # bash <(curl -fsSL https://raw.githubusercontent.com/bensonlabs/bootstraps/main/scripts/bootstrap_macOS.sh)
 # ==============================================================================
+
+echo "Install homebrew.  You will need to interact to install xcode."
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
 set -euo pipefail
 
 BOOTSTRAP_LOG="${HOME}/bootstrap_macos_$(date +%Y%m%d_%H%M%S).log"
