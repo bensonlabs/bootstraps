@@ -11,6 +11,7 @@ WARNINGS=()
 SUCCESSES=()
 ARCH="$(uname -m)"
 MACOS_MAJOR_VERSION="$(sw_vers -productVersion | cut -d. -f1)"
+FATAL_ERROR=0
 
 BREW_PACKAGES=(
     git
@@ -51,8 +52,7 @@ AI_CLI_CHECKS=(
 )
 
 log() {
-    echo "$*"
-    echo "$*" >> "$BOOTSTRAP_LOG"
+    echo "$*" | tee -a "$BOOTSTRAP_LOG"
 }
 
 record_success() {
@@ -65,11 +65,14 @@ warn() {
     log "WARN: $1"
 }
 
+fatal() {
+    FATAL_ERROR=1
+    WARNINGS+=("FATAL: $1")
+    log "FATAL: $1"
+}
+
 print_stage() {
     local title="$1"
-    echo "=============================================================================="
-    echo " $title"
-    echo "=============================================================================="
     log "=============================================================================="
     log " $title"
     log "=============================================================================="
@@ -83,7 +86,7 @@ run_step() {
         return 0
     fi
 
-    warn "$description failed"
+    fatal "$description failed"
     return 1
 }
 
@@ -107,11 +110,25 @@ run_optional_pipe_step() {
     fi
 }
 
+check_brew_health() {
+    log "Running Homebrew health preflight..."
+
+    if command -v brew >/dev/null 2>&1; then
+        if ! brew doctor >> "$BOOTSTRAP_LOG" 2>&1; then
+            warn "brew doctor reported issues; continuing because Homebrew may still be usable"
+        else
+            record_success "Homebrew health preflight passed"
+        fi
+    else
+        record_success "Homebrew not yet installed; skipping brew doctor preflight"
+    fi
+}
+
 ensure_homebrew() {
     if command -v brew >/dev/null 2>&1; then
         record_success "Homebrew already installed"
     else
-        run_step "Install Homebrew" bash -c 'NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
+        run_step "Install Homebrew" bash -c 'NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"' || return 1
     fi
 
     if [[ -x /opt/homebrew/bin/brew ]]; then
@@ -121,7 +138,7 @@ ensure_homebrew() {
         eval "$(/usr/local/bin/brew shellenv)"
         record_success "Loaded Homebrew environment from /usr/local"
     else
-        warn "Unable to locate brew after installation"
+        fatal "Unable to locate brew after installation"
         return 1
     fi
 }
@@ -168,7 +185,7 @@ ensure_npm_global_path() {
 
     mkdir -p "$HOME/.npm-global"
     record_success "Ensured npm global directory exists"
-    run_step "Configure npm global prefix" npm config set prefix "$HOME/.npm-global"
+    run_step "Configure npm global prefix" npm config set prefix "$HOME/.npm-global" || return 1
 
     if ! grep -Fqx 'export PATH="$HOME/.npm-global/bin:$PATH"' "$HOME/.zshrc" 2>/dev/null; then
         echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> "$HOME/.zshrc"
@@ -185,6 +202,12 @@ ensure_npm_global_path() {
 install_shell_cli() {
     local description="$1"
     local command="$2"
+    local binary="$3"
+
+    if command -v "$binary" >/dev/null 2>&1; then
+        record_success "$description already installed"
+        return 0
+    fi
 
     log "Installing $description..."
     if bash -c "$command" >> "$BOOTSTRAP_LOG" 2>&1; then
@@ -198,6 +221,11 @@ install_shell_cli() {
 create_ll_wrapper() {
     if ! command -v gls >/dev/null 2>&1; then
         warn "gls not available; skipping ll wrapper creation"
+        return 0
+    fi
+
+    if [[ -x /usr/local/bin/ll ]] && grep -Fq 'exec gls -laFo --color=auto --group-directories-first "$@"' /usr/local/bin/ll 2>/dev/null; then
+        record_success "ll wrapper already configured"
         return 0
     fi
 
@@ -264,6 +292,7 @@ print_summary() {
     echo "macOS major version: $MACOS_MAJOR_VERSION"
     echo "Successful steps: ${#SUCCESSES[@]}"
     echo "Warnings: ${#WARNINGS[@]}"
+    echo "Fatal error state: $FATAL_ERROR"
 
     echo ""
     echo "Successful items:"
@@ -285,6 +314,15 @@ print_summary() {
     fi
 }
 
+finish() {
+    print_summary
+    if [[ "$FATAL_ERROR" -ne 0 ]]; then
+        exit 1
+    fi
+}
+
+trap finish EXIT
+
 log "=============================================================================="
 log " MACOS AI DEV BOOTSTRAP"
 log " Log file: $BOOTSTRAP_LOG"
@@ -292,19 +330,22 @@ log " Architecture: $ARCH"
 log " macOS major version: $MACOS_MAJOR_VERSION"
 log "=============================================================================="
 
+print_stage "STAGE 0: PACKAGE MANAGER PREFLIGHT"
+check_brew_health
+
 print_stage "STAGE 1: HOMEBREW SETUP"
-ensure_homebrew
+ensure_homebrew || exit 1
 run_optional_step "Update Homebrew" brew update
 
 print_stage "STAGE 2: CORE CLI TOOLS"
 install_brew_packages
-ensure_npm_global_path
-install_shell_cli "Claude Code" "npm install -g @anthropic-ai/claude-code"
-install_shell_cli "Codex CLI" "curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh"
-install_shell_cli "Google Antigravity CLI" "curl -fsSL https://antigravity.google/cli/install.sh | bash"
-install_shell_cli "GitHub Copilot CLI" "curl -fsSL https://gh.io/copilot-install | bash"
-install_shell_cli "Zed IDE" "curl -fsSL https://zed.dev/install.sh | sh"
-run_optional_pipe_step "Install one-file-context" "npm install -g one-file-context"
+ensure_npm_global_path || exit 1
+install_shell_cli "Claude Code" "npm install -g @anthropic-ai/claude-code" claude
+install_shell_cli "Codex CLI" "curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh" codex
+install_shell_cli "Google Antigravity CLI" "curl -fsSL https://antigravity.google/cli/install.sh | bash" agy
+install_shell_cli "GitHub Copilot CLI" "curl -fsSL https://gh.io/copilot-install | bash" copilot
+install_shell_cli "Zed IDE" "curl -fsSL https://zed.dev/install.sh | sh" zed
+install_shell_cli "one-file-context" "npm install -g one-file-context" one-file-context
 
 print_stage "STAGE 3: GUI APPLICATIONS"
 install_brew_casks
@@ -330,5 +371,3 @@ log "------------------------------------------------"
 log "Bootstrap complete!"
 log ""
 run_optional_step "Run fastfetch" fastfetch
-
-print_summary
