@@ -17,7 +17,7 @@ BREW_PACKAGES=(
     git
     gh
     node
-    uv
+    python
     ripgrep
     bat
     tree
@@ -26,18 +26,18 @@ BREW_PACKAGES=(
     fish
     zsh-completions
     coreutils
+    fastfetch
+    sevenzip
 )
 
 BREW_CASKS=(
     visual-studio-code
-    iterm2
-    github
     obsidian
-    tailscale
     chatgpt
     bitwarden
     slack
     claude
+    zed
 )
 
 AI_CLI_CHECKS=(
@@ -45,10 +45,16 @@ AI_CLI_CHECKS=(
     "Codex CLI:codex --version"
     "GitHub Copilot CLI:copilot --version"
     "Google Antigravity CLI:agy --version"
+    "one-file-context:one-file-context --help"
     "Zed:zed --version"
     "GitHub CLI:gh --version"
     "Node.js:node --version"
     "npm:npm --version"
+    "Python:python3 --version"
+    "pip:pip3 --version"
+    "ripgrep:rg --version"
+    "fastfetch:fastfetch --version"
+    "7zip:7zz"
 )
 
 log() {
@@ -163,18 +169,6 @@ install_brew_casks() {
             run_optional_step "Install Homebrew cask: $cask" brew install --cask "$cask"
         fi
     done
-}
-
-install_optional_gemini_cask() {
-    if [[ "$ARCH" == "arm64" && "$MACOS_MAJOR_VERSION" -ge 15 ]]; then
-        if brew list --cask google-gemini >/dev/null 2>&1; then
-            record_success "Homebrew cask already installed: google-gemini"
-        else
-            run_optional_step "Install Homebrew cask: google-gemini" brew install --cask google-gemini
-        fi
-    else
-        warn "Skipping google-gemini cask; requires Apple Silicon and macOS 15+"
-    fi
 }
 
 ensure_npm_global_path() {
@@ -341,7 +335,7 @@ print_stage "STAGE 2: CORE CLI TOOLS"
 install_brew_packages
 ensure_npm_global_path || exit 1
 install_shell_cli "Claude Code" "npm install -g @anthropic-ai/claude-code" claude
-install_shell_cli "Codex CLI" "curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh" codex
+install_shell_cli "Codex CLI" "npm install -g @openai/codex" codex
 install_shell_cli "Google Antigravity CLI" "curl -fsSL https://antigravity.google/cli/install.sh | bash" agy
 install_shell_cli "GitHub Copilot CLI" "curl -fsSL https://gh.io/copilot-install | bash" copilot
 install_shell_cli "Zed IDE" "curl -fsSL https://zed.dev/install.sh | sh" zed
@@ -349,7 +343,6 @@ install_shell_cli "one-file-context" "npm install -g one-file-context" one-file-
 
 print_stage "STAGE 3: GUI APPLICATIONS"
 install_brew_casks
-install_optional_gemini_cask
 
 print_stage "STAGE 4: SYSTEM CUSTOMIZATION"
 create_ll_wrapper
