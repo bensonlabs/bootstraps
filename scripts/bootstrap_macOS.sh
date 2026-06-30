@@ -39,7 +39,6 @@ BREW_CASKS=(
     bitwarden
     slack
     claude
-    zed
 )
 
 AI_CLI_CHECKS=(
@@ -47,7 +46,6 @@ AI_CLI_CHECKS=(
     "Codex CLI:codex --version"
     "GitHub Copilot CLI:copilot --version"
     "Google Antigravity CLI:agy --version"
-    "Zed:zed --version"
     "GitHub CLI:gh --version"
     "Node.js:node --version"
     "npm:npm --version"
@@ -373,7 +371,6 @@ install_shell_cli "Claude Code" "npm install -g @anthropic-ai/claude-code" claud
 install_shell_cli "Codex CLI" "npm install -g @openai/codex" codex
 install_shell_cli "Google Antigravity CLI" "curl -fsSL https://antigravity.google/cli/install.sh | bash" agy
 install_shell_cli "GitHub Copilot CLI" "curl -fsSL https://gh.io/copilot-install | bash" copilot
-install_shell_cli "Zed IDE" "curl -fsSL https://zed.dev/install.sh | sh" zed
 
 print_stage "STAGE 3: GUI APPLICATIONS"
 install_brew_casks
