@@ -1,6 +1,30 @@
 # ==============================================================================
 # UNATTENDED AI DEVELOPMENT ENVIRONMENT BOOTSTRAP - WINDOWS 11
 # ==============================================================================
+#
+# Every install step is guarded by an existence check, so the script is safe to
+# re-run. Two switches make repeated runs cheap:
+#
+#   .\bootstrap_windows.ps1                        Full run, ends in a reboot
+#   .\bootstrap_windows.ps1 -NoReboot -SkipWsl     Iterate without rebooting
+#   .\bootstrap_windows.ps1 -KeepLogs 10           Keep more history
+#
+# Must be run from an elevated session.
+# ==============================================================================
+
+[CmdletBinding()]
+param(
+    # Skip the reboot at the end of a successful run.
+    [switch]$NoReboot,
+
+    # Skip Stage 5 entirely: no WSL provisioner is generated and no RunOnce
+    # entry is registered.
+    [switch]$SkipWsl,
+
+    # How many bootstrap logs to retain in the user profile.
+    [ValidateRange(1, 100)]
+    [int]$KeepLogs = 5
+)
 
 $ErrorActionPreference = 'Stop'
 Set-ExecutionPolicy RemoteSigned -Scope Process -Force
@@ -15,6 +39,7 @@ $PythonVersion = "3.13"
 $PythonShortVersion = $PythonVersion -replace "\.", ""
 $SysinternalsPath = "$env:ProgramFiles\Sysinternals"
 $FatalError = $false
+$WslStageRegistered = $false
 
 # Resolve the Desktop through the shell API rather than assuming
 # "$env:USERPROFILE\Desktop". With OneDrive Known Folder Move enabled the real
@@ -92,6 +117,24 @@ function Invoke-OptionalStep {
         }
     } catch {
         Add-Warning "$Description failed; continuing: $($_.Exception.Message)"
+    }
+}
+
+function Remove-OldLogs {
+    param([string]$Filter, [int]$Keep)
+    try {
+        $logs = @(Get-ChildItem -Path $env:USERPROFILE -Filter $Filter -File -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending)
+        if ($logs.Count -le $Keep) {
+            return
+        }
+        $stale = @($logs | Select-Object -Skip $Keep)
+        foreach ($item in $stale) {
+            Remove-Item -Path $item.FullName -Force -ErrorAction SilentlyContinue
+        }
+        Record-Success "Pruned $($stale.Count) old log(s) matching $Filter, keeping newest $Keep"
+    } catch {
+        Add-Warning "Log pruning for $Filter failed; continuing: $($_.Exception.Message)"
     }
 }
 
@@ -255,6 +298,7 @@ function Print-Summary {
     Write-Log "OS: $OsVersion"
     Write-Log "Host PowerShell: $($PSVersionTable.PSVersion)"
     Write-Log "Desktop: $DesktopPath"
+    Write-Log "Mode: NoReboot=$NoReboot SkipWsl=$SkipWsl KeepLogs=$KeepLogs"
     Write-Log "Successful steps: $($Successes.Count)"
     Write-Log "Warnings: $($Warnings.Count)"
     Write-Log "Fatal error state: $FatalError"
@@ -279,6 +323,7 @@ Write-Log " Log file: $BootstrapLog"
 Write-Log " OS: $OsVersion"
 Write-Log " Host PowerShell: $($PSVersionTable.PSVersion)"
 Write-Log " Desktop: $DesktopPath"
+Write-Log " Mode: NoReboot=$NoReboot SkipWsl=$SkipWsl KeepLogs=$KeepLogs"
 Write-Log ("=" * 78)
 
 Print-Stage "STAGE 0: PACKAGE MANAGER PREFLIGHT"
@@ -484,9 +529,13 @@ Invoke-OptionalStep "Check Google Antigravity CLI version" { agy --version }
 Write-Log "------------------------------------------------"
 Write-Log "Windows bootstrap stage complete."
 
-Print-Stage "STAGE 5: GENERATE POST-REBOOT WSL PROVISIONER & SCHEDULER"
+if ($SkipWsl) {
+    Print-Stage "STAGE 5: SKIPPED (-SkipWsl)"
+    Record-Success "Skipped WSL provisioner generation and RunOnce registration"
+} else {
+    Print-Stage "STAGE 5: GENERATE POST-REBOOT WSL PROVISIONER & SCHEDULER"
 
-$WslScriptContent = @'
+    $WslScriptContent = @'
 # ==============================================================================
 # WSL2 UBUNTU BOOTSTRAP (STAGE 2 - POST-REBOOT)
 # ==============================================================================
@@ -600,29 +649,34 @@ Write-Host "WSL Ubuntu Environment configuration complete! Press any key to exit
 Pause
 '@
 
-$WslScriptReady = Invoke-RequiredStep "Generate WSL bootstrap script: $WslScriptPath" {
-    $wslScriptParent = Split-Path -Parent $WslScriptPath
-    if (-not (Test-Path $wslScriptParent)) {
-        New-Item -ItemType Directory -Path $wslScriptParent -Force | Out-Null
+    $WslScriptReady = Invoke-RequiredStep "Generate WSL bootstrap script: $WslScriptPath" {
+        $wslScriptParent = Split-Path -Parent $WslScriptPath
+        if (-not (Test-Path $wslScriptParent)) {
+            New-Item -ItemType Directory -Path $wslScriptParent -Force | Out-Null
+        }
+        $WslScriptContent | Out-File -FilePath $WslScriptPath -Encoding utf8 -Force
     }
-    $WslScriptContent | Out-File -FilePath $WslScriptPath -Encoding utf8 -Force
+
+    if ($WslScriptReady) {
+        # Run the post-reboot stage under PowerShell 7 when it is present, falling
+        # back to Windows PowerShell so the stage still runs if the MSI step failed.
+        $RunOnceShell = if (Test-Pwsh7Installed) { Get-Pwsh7Path } else { "powershell.exe" }
+        $currentRunOnce = (Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -ErrorAction SilentlyContinue).WSLBootstrap
+        $desiredRunOnce = "`"$RunOnceShell`" -ExecutionPolicy Bypass -NoExit -File `"$WslScriptPath`""
+        if ($currentRunOnce -eq $desiredRunOnce) {
+            Record-Success "WSL bootstrap RunOnce already configured"
+        } else {
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -Name "WSLBootstrap" -Value $desiredRunOnce
+            Record-Success "Registered WSL bootstrap in RunOnce ($RunOnceShell)"
+        }
+        $WslStageRegistered = $true
+    } else {
+        Add-Warning "Skipping RunOnce registration because the WSL bootstrap script was not written"
+    }
 }
 
-if ($WslScriptReady) {
-    # Run the post-reboot stage under PowerShell 7 when it is present, falling
-    # back to Windows PowerShell so the stage still runs if the MSI step failed.
-    $RunOnceShell = if (Test-Pwsh7Installed) { Get-Pwsh7Path } else { "powershell.exe" }
-    $currentRunOnce = (Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -ErrorAction SilentlyContinue).WSLBootstrap
-    $desiredRunOnce = "`"$RunOnceShell`" -ExecutionPolicy Bypass -NoExit -File `"$WslScriptPath`""
-    if ($currentRunOnce -eq $desiredRunOnce) {
-        Record-Success "WSL bootstrap RunOnce already configured"
-    } else {
-        Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -Name "WSLBootstrap" -Value $desiredRunOnce
-        Record-Success "Registered WSL bootstrap in RunOnce ($RunOnceShell)"
-    }
-} else {
-    Add-Warning "Skipping RunOnce registration because the WSL bootstrap script was not written"
-}
+Remove-OldLogs -Filter "bootstrap_windows_*.log" -Keep $KeepLogs
+Remove-OldLogs -Filter "bootstrap_wsl_*.log" -Keep $KeepLogs
 
 Print-Summary
 
@@ -631,6 +685,15 @@ if ($FatalError) {
 }
 
 Write-Log ""
+if ($NoReboot) {
+    Write-Log "Windows stage complete. -NoReboot specified; skipping reboot."
+    if ($WslStageRegistered) {
+        Write-Log "NOTE: the WSL bootstrap is registered in RunOnce and will run at your next sign-in."
+        Write-Log "      Re-run with -SkipWsl if you do not want that scheduled."
+    }
+    exit 0
+}
+
 Write-Log "Windows stage complete. Rebooting VM in 5 seconds to initialize WSL2..."
 Start-Sleep -Seconds 5
 Restart-Computer -Force
