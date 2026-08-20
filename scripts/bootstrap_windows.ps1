@@ -10,12 +10,21 @@ $BootstrapLog = "$env:USERPROFILE\bootstrap_windows_$(Get-Date -Format 'yyyyMMdd
 $Warnings = [System.Collections.Generic.List[string]]::new()
 $Successes = [System.Collections.Generic.List[string]]::new()
 $OsVersion = (Get-CimInstance Win32_OperatingSystem).Caption
-$PowerToysVersion = "0.99.1"
 $PwshVersion = "7.6.5"
 $PythonVersion = "3.13"
 $PythonShortVersion = $PythonVersion -replace "\.", ""
+$SysinternalsPath = "$env:ProgramFiles\Sysinternals"
 $FatalError = $false
-$WslScriptPath = "$env:USERPROFILE\Desktop\wsl_bootstrap.ps1"
+
+# Resolve the Desktop through the shell API rather than assuming
+# "$env:USERPROFILE\Desktop". With OneDrive Known Folder Move enabled the real
+# Desktop lives under the OneDrive root and the literal path does not exist,
+# which previously killed Stage 5 outright.
+$DesktopPath = [Environment]::GetFolderPath('Desktop')
+if ([string]::IsNullOrWhiteSpace($DesktopPath)) {
+    $DesktopPath = $env:USERPROFILE
+}
+$WslScriptPath = Join-Path $DesktopPath "wsl_bootstrap.ps1"
 
 function Write-Log {
     param([string]$Message)
@@ -136,6 +145,15 @@ function Refresh-Path {
     Record-Success "Refreshed PATH"
 }
 
+function Add-MachinePathEntry {
+    param([string]$Directory)
+    $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+    $entries = $machinePath -split ';' | Where-Object { $_ -ne '' }
+    if ($entries -notcontains $Directory) {
+        [Environment]::SetEnvironmentVariable("Path", (($entries + $Directory) -join ';'), "Machine")
+    }
+}
+
 function Test-PowerToysInstalled {
     $paths = @(
         "$env:ProgramFiles\PowerToys\PowerToys.exe",
@@ -153,6 +171,10 @@ function Get-Pwsh7Path {
 
 function Test-Pwsh7Installed {
     return Test-Path (Get-Pwsh7Path)
+}
+
+function Test-SysinternalsInstalled {
+    return Test-Path (Join-Path $SysinternalsPath "procexp64.exe")
 }
 
 function Test-NpmGlobalInstalled {
@@ -232,6 +254,7 @@ function Print-Summary {
     Write-Log "Log file: $BootstrapLog"
     Write-Log "OS: $OsVersion"
     Write-Log "Host PowerShell: $($PSVersionTable.PSVersion)"
+    Write-Log "Desktop: $DesktopPath"
     Write-Log "Successful steps: $($Successes.Count)"
     Write-Log "Warnings: $($Warnings.Count)"
     Write-Log "Fatal error state: $FatalError"
@@ -255,6 +278,7 @@ Write-Log " WINDOWS AI DEV BOOTSTRAP"
 Write-Log " Log file: $BootstrapLog"
 Write-Log " OS: $OsVersion"
 Write-Log " Host PowerShell: $($PSVersionTable.PSVersion)"
+Write-Log " Desktop: $DesktopPath"
 Write-Log ("=" * 78)
 
 Print-Stage "STAGE 0: PACKAGE MANAGER PREFLIGHT"
@@ -263,8 +287,14 @@ if (-not (Invoke-PreflightChecks)) {
     exit 1
 }
 
-Invoke-OptionalStep "Install NuGet package provider" {
-    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+# PackageManagement in PowerShell 7 has NuGet built in and Install-PackageProvider
+# fails there with a misleading "no match found" error. Only run it on 5.1.
+if ($PSVersionTable.PSEdition -eq 'Desktop') {
+    Invoke-OptionalStep "Install NuGet package provider" {
+        Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+    }
+} else {
+    Record-Success "NuGet package provider built in (PowerShell $($PSVersionTable.PSVersion))"
 }
 Invoke-OptionalStep "Trust PSGallery repository" {
     Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
@@ -296,20 +326,39 @@ if (Test-Pwsh7Installed) {
 Invoke-WingetInstall "Windows Terminal" "Microsoft.WindowsTerminal"
 Invoke-WingetInstall "Everything" "voidtools.Everything"
 
+# PowerToys is installed via winget. Upstream stopped publishing .msi installers
+# (0.100.x ships only PowerToysSetup-*.exe / PowerToysUserSetup-*.exe), so the
+# old pinned-MSI download returned 404 on every run.
 if (Test-PowerToysInstalled) {
     Record-Success "PowerToys already installed"
 } else {
-    Write-Log "Downloading and installing PowerToys via MSI..."
-    Invoke-OptionalStep "Install PowerToys" {
-        $ptUrl = "https://github.com/microsoft/PowerToys/releases/download/v$PowerToysVersion/PowerToysSetup-$PowerToysVersion-x64.msi"
-        $ptPath = "$env:TEMP\PowerToysSetup.msi"
-        (New-Object System.Net.WebClient).DownloadFile($ptUrl, $ptPath)
-        Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$ptPath`" /qn /norestart" -Wait
-        Remove-Item -Path $ptPath -Force
+    Invoke-WingetInstall "PowerToys" "Microsoft.PowerToys"
+}
+
+# Sysinternals is downloaded straight from Microsoft. The winget manifest pins a
+# hash for a rolling zip that Microsoft rebuilds in place, so winget reliably
+# fails with "Installer hash does not match; this cannot be overridden when
+# running as admin".
+if (Test-SysinternalsInstalled) {
+    Record-Success "Sysinternals Suite already installed"
+} else {
+    Write-Log "Downloading Sysinternals Suite directly (winget's pinned hash does not match the rolling zip)..."
+    Invoke-OptionalStep "Install Sysinternals Suite" {
+        $sysUrl = "https://download.sysinternals.com/files/SysinternalsSuite.zip"
+        $sysZip = "$env:TEMP\SysinternalsSuite.zip"
+        (New-Object System.Net.WebClient).DownloadFile($sysUrl, $sysZip)
+        if (-not (Test-Path $SysinternalsPath)) {
+            New-Item -ItemType Directory -Path $SysinternalsPath -Force | Out-Null
+        }
+        Expand-Archive -Path $sysZip -DestinationPath $SysinternalsPath -Force
+        Remove-Item -Path $sysZip -Force
+        Add-MachinePathEntry -Directory $SysinternalsPath
+        if (-not (Test-SysinternalsInstalled)) {
+            throw "Extraction completed but procexp64.exe is missing from $SysinternalsPath"
+        }
     }
 }
 
-Invoke-WingetInstall "Sysinternals Suite" "Microsoft.Sysinternals.Suite"
 Invoke-WingetInstall "Git" "Git.Git"
 Invoke-WingetInstall "GitHub CLI" "GitHub.cli"
 Invoke-WingetInstall "GitHub Desktop" "GitHub.GitHubDesktop"
@@ -317,7 +366,11 @@ Invoke-WingetInstall "GitHub Copilot" "GitHub.Copilot"
 Invoke-WingetInstall "Python $PythonVersion" "Python.Python.$PythonVersion"
 Invoke-WingetInstall "Visual Studio Code" "Microsoft.VisualStudioCode"
 Invoke-WingetInstall "Node.js LTS" "OpenJS.NodeJS.LTS"
-Invoke-WingetInstall "Slack" "SlackTechnologies.SlackS"
+# Stage 4 verifies rg and fastfetch, so install them here rather than reporting
+# them as missing every run.
+Invoke-WingetInstall "ripgrep" "BurntSushi.ripgrep.MSVC"
+Invoke-WingetInstall "fastfetch" "Fastfetch-cli.Fastfetch"
+Invoke-WingetInstall "Slack" "SlackTechnologies.Slack"
 Invoke-WingetInstall "Bitwarden" "Bitwarden.Bitwarden"
 Invoke-WingetInstall "Obsidian" "Obsidian.Obsidian"
 Invoke-WingetInstall "ChatGPT" "9NT1R1C2HH7J" -Source "msstore"
@@ -349,9 +402,14 @@ Invoke-OptionalStep "Register Python app path" {
     $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
     $pythonPath = if ($pythonCommand) { $pythonCommand.Source } else { $null }
     if (-not $pythonPath) {
-        $pythonPath = "$env:ProgramFiles\Python$PythonShortVersion\python.exe"
+        $pythonPath = "$env:LOCALAPPDATA\Programs\Python\Python$PythonShortVersion\python.exe"
     }
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\App Paths\python.exe" -Name "(Default)" -Value $pythonPath
+    # Set-ItemProperty cannot create the key, so create it first on a clean box.
+    $appPathsKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\App Paths\python.exe"
+    if (-not (Test-Path $appPathsKey)) {
+        New-Item -Path $appPathsKey -Force | Out-Null
+    }
+    Set-ItemProperty -Path $appPathsKey -Name "(Default)" -Value $pythonPath
 }
 
 Print-Stage "STAGE 2: CONTAINERIZATION & VIRTUALIZATION"
@@ -360,12 +418,18 @@ Invoke-WingetInstall "Docker Desktop" "Docker.DockerDesktop"
 
 Refresh-Path
 
-Invoke-OptionalStep "Pre-accept Docker Desktop license" {
-    $dockerSettingsPath = "$env:APPDATA\Docker\settings.json"
-    if (!(Test-Path (Split-Path $dockerSettingsPath))) {
-        New-Item -ItemType Directory -Path (Split-Path $dockerSettingsPath) -Force | Out-Null
+# Only seed Docker's settings.json when it does not already exist. Overwriting
+# it on every run discards any settings Docker Desktop or the user has written.
+if (Test-Path "$env:APPDATA\Docker\settings.json") {
+    Record-Success "Docker Desktop settings already present; leaving untouched"
+} else {
+    Invoke-OptionalStep "Pre-accept Docker Desktop license" {
+        $dockerSettingsPath = "$env:APPDATA\Docker\settings.json"
+        if (!(Test-Path (Split-Path $dockerSettingsPath))) {
+            New-Item -ItemType Directory -Path (Split-Path $dockerSettingsPath) -Force | Out-Null
+        }
+        '{"wslEngineEnabled":true,"displayedTutorial":true,"acceptLicense":true}' | Out-File -FilePath $dockerSettingsPath -Encoding utf8 -Force
     }
-    '{"wslEngineEnabled":true,"displayedTutorial":true,"acceptLicense":true}' | Out-File -FilePath $dockerSettingsPath -Encoding utf8 -Force
 }
 
 if (Get-Process -Name "Docker Desktop" -ErrorAction SilentlyContinue) {
@@ -398,7 +462,6 @@ if (Test-CommandExists "agy") {
     Refresh-Path
 }
 Install-NpmCliIfMissing "GitHub Copilot CLI" "copilot" "@github/copilot" { npm install -g @github/copilot }
-Install-NpmCliIfMissing "one-file-context" "one-file-context" "one-file-context" { npm install -g one-file-context }
 
 Print-Stage "STAGE 4: WINDOWS STACK VERIFICATION"
 Write-Log "--- CORE TOOLS ---"
@@ -418,13 +481,12 @@ Invoke-OptionalStep "Check Claude Code version" { claude --version }
 Invoke-OptionalStep "Check Codex CLI version" { codex --version }
 Invoke-OptionalStep "Check GitHub Copilot CLI version" { copilot --version }
 Invoke-OptionalStep "Check Google Antigravity CLI version" { agy --version }
-Invoke-OptionalStep "Check one-file-context" { one-file-context --help }
 Write-Log "------------------------------------------------"
 Write-Log "Windows bootstrap stage complete."
 
 Print-Stage "STAGE 5: GENERATE POST-REBOOT WSL PROVISIONER & SCHEDULER"
 
-@'
+$WslScriptContent = @'
 # ==============================================================================
 # WSL2 UBUNTU BOOTSTRAP (STAGE 2 - POST-REBOOT)
 # ==============================================================================
@@ -518,7 +580,7 @@ Invoke-WslOptionalStep "Configure shared Git credentials in WSL" {
 }
 
 Invoke-WslOptionalStep "Install AI CLI tools in WSL" {
-    wsl -u root -e bash -c "npm install -g @anthropic-ai/claude-code @openai/codex one-file-context"
+    wsl -u root -e bash -c "npm install -g @anthropic-ai/claude-code @openai/codex"
 }
 
 Write-WslLog ""
@@ -536,20 +598,30 @@ Print-WslSummary
 Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -Name "WSLBootstrap" -ErrorAction SilentlyContinue
 Write-Host "WSL Ubuntu Environment configuration complete! Press any key to exit."
 Pause
-'@ | Out-File -FilePath $WslScriptPath -Encoding utf8 -Force
+'@
 
-Record-Success "Generated WSL bootstrap script: $WslScriptPath"
+$WslScriptReady = Invoke-RequiredStep "Generate WSL bootstrap script: $WslScriptPath" {
+    $wslScriptParent = Split-Path -Parent $WslScriptPath
+    if (-not (Test-Path $wslScriptParent)) {
+        New-Item -ItemType Directory -Path $wslScriptParent -Force | Out-Null
+    }
+    $WslScriptContent | Out-File -FilePath $WslScriptPath -Encoding utf8 -Force
+}
 
-# Run the post-reboot stage under PowerShell 7 when it is present, falling back
-# to Windows PowerShell so the stage still runs if the MSI install failed.
-$RunOnceShell = if (Test-Pwsh7Installed) { Get-Pwsh7Path } else { "powershell.exe" }
-$currentRunOnce = (Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -ErrorAction SilentlyContinue).WSLBootstrap
-$desiredRunOnce = "`"$RunOnceShell`" -ExecutionPolicy Bypass -NoExit -File `"$WslScriptPath`""
-if ($currentRunOnce -eq $desiredRunOnce) {
-    Record-Success "WSL bootstrap RunOnce already configured"
+if ($WslScriptReady) {
+    # Run the post-reboot stage under PowerShell 7 when it is present, falling
+    # back to Windows PowerShell so the stage still runs if the MSI step failed.
+    $RunOnceShell = if (Test-Pwsh7Installed) { Get-Pwsh7Path } else { "powershell.exe" }
+    $currentRunOnce = (Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -ErrorAction SilentlyContinue).WSLBootstrap
+    $desiredRunOnce = "`"$RunOnceShell`" -ExecutionPolicy Bypass -NoExit -File `"$WslScriptPath`""
+    if ($currentRunOnce -eq $desiredRunOnce) {
+        Record-Success "WSL bootstrap RunOnce already configured"
+    } else {
+        Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -Name "WSLBootstrap" -Value $desiredRunOnce
+        Record-Success "Registered WSL bootstrap in RunOnce ($RunOnceShell)"
+    }
 } else {
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -Name "WSLBootstrap" -Value $desiredRunOnce
-    Record-Success "Registered WSL bootstrap in RunOnce ($RunOnceShell)"
+    Add-Warning "Skipping RunOnce registration because the WSL bootstrap script was not written"
 }
 
 Print-Summary
