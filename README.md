@@ -59,6 +59,12 @@ Contains:
 
 * A Fedora bootstrap entry point for clean-install setup automation
 
+### HW Laptop Grader distribution
+
+Location: `distributions/hw-laptop-grader/`
+
+Contains versioned, runtime-only Windows 11 hardware diagnostic packages for loaner-laptop reassignment. Each release-tagged package includes a bootstrap script and its required grader files, without collector credentials or private source-repository access.
+
 ## AI Tooling
 
 Location: ai/
