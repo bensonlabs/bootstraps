@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/bensonlabs/bootstraps/hw-laptop-grader-v0.1.7/distributions/hw-laptop-grader/v0.1.7/config/result.schema.json",
+  "title": "HW Laptop Grader Result",
+  "type": "object",
+  "required": ["schemaVersion", "run", "diagnostics", "result"],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "run": {
+      "type": "object",
+      "required": ["runId", "startedAtUtc", "completedAtUtc", "graderVersion", "computerName"],
+      "properties": {
+        "runId": { "type": "string", "format": "uuid" },
+        "startedAtUtc": { "type": "string", "format": "date-time" },
+        "completedAtUtc": { "type": "string", "format": "date-time" },
+        "durationSeconds": { "type": ["number", "null"] },
+        "graderVersion": { "type": "string" },
+        "computerName": { "type": "string" }
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/diagnostic" }
+    },
+    "result": {
+      "type": "object",
+      "required": ["score", "grade", "recommendedRole", "warnings"],
+      "properties": {
+        "score": { "type": ["number", "null"] },
+        "grade": { "type": ["string", "null"] },
+        "recommendedRole": { "type": ["string", "null"] },
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "scoringProfile": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "diagnostic": {
+      "type": "object",
+      "required": ["status", "collectedAtUtc", "data", "error"],
+      "properties": {
+        "status": { "enum": ["OK", "UNAVAILABLE", "ERROR", "NOT_RUN"] },
+        "collectedAtUtc": { "type": "string", "format": "date-time" },
+        "data": { "type": ["object", "array", "null"] },
+        "error": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
+
