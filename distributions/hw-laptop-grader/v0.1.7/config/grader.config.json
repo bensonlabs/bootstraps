@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1.0",
+  "graderVersion": "0.1.7",
+  "eventLogLookbackDays": 30,
+  "benchmarks": {
+    "cpu": {
+      "enabled": true,
+      "durationSeconds": 8,
+      "sampleIntervalSeconds": 2
+    },
+    "storage": {
+      "enabled": true,
+      "fileSizeMB": 64,
+      "blockSizeKB": 1024
+    },
+    "memory": {
+      "enabled": true,
+      "bufferSizeMB": 32,
+      "passes": 8
+    }
+  },
+  "readiness": {
+    "minimumFreeSystemDriveGB": 30,
+    "minimumBatteryHealthPct": 75,
+    "requireBitLockerForAssignment": false
+  },
+  "scoring": {
+    "enabled": false,
+    "profile": "baseline-only",
+    "thresholds": {}
+  },
+  "submission": {
+    "enabled": false,
+    "endpoint": "",
+    "tokenEnvironmentVariable": "HW_LAPTOP_GRADER_TOKEN",
+    "tokenQueryParameter": "token",
+    "timeoutSeconds": 30
+  }
+}
+
