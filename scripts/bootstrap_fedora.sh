@@ -243,13 +243,57 @@ check_dnf_health() {
     record_success "DNF health preflight passed"
 }
 
+check_platform() {
+    if [[ ! -r /etc/fedora-release ]] || ! grep -q '^Fedora' /etc/os-release; then
+        fatal "This script supports Fedora only"
+        return 1
+    fi
+
+    if [[ "$(uname -m)" != "x86_64" ]]; then
+        fatal "This script currently supports x86_64 Fedora only"
+        return 1
+    fi
+
+    if ! command -v dnf5 >/dev/null 2>&1; then
+        fatal "dnf5 is required but was not found"
+        return 1
+    fi
+}
+
+create_pre_bootstrap_snapshot() {
+    local filesystem
+
+    filesystem="$(findmnt -n -o FSTYPE / 2>/dev/null || true)"
+    if [[ "$filesystem" != "btrfs" ]]; then
+        warn "Root filesystem is '$filesystem', not Btrfs; skipping Snapper snapshot"
+        return 0
+    fi
+
+    if ! command -v snapper >/dev/null 2>&1; then
+        run_optional_step "Install Snapper for rollback protection" sudo dnf5 install -y snapper
+    fi
+
+    if ! command -v snapper >/dev/null 2>&1; then
+        fatal "Snapper is unavailable on a Btrfs root; refusing to continue without a pre-bootstrap snapshot"
+        return 1
+    fi
+
+    if ! sudo snapper list-configs 2>/dev/null | awk 'NR > 1 && $1 == "root" { found = 1 } END { exit !found }'; then
+        log "Creating Snapper root configuration..."
+        if ! sudo snapper -c root create-config / 2>&1 | tee -a "$BOOTSTRAP_LOG"; then
+            fatal "Unable to create the Snapper root configuration"
+            return 1
+        fi
+    fi
+
+    run_step "Create pre-bootstrap Snapper snapshot" sudo snapper -c root create --description "Before Fedora bootstrap $(date +%Y-%m-%d_%H-%M-%S)"
+}
+
 install_flatpaks() {
     local app
 
     if ! command -v flatpak >/dev/null 2>&1; then
-        warn "flatpak is not available; skipping Flatpak app installs"
-        SKIP_FLATPAK_INSTALLS=1
-        return 0
+        run_step "Install Flatpak runtime" sudo dnf5 install -y flatpak || return 1
     fi
 
     if ! sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo 2>&1 | tee -a "$BOOTSTRAP_LOG"; then
@@ -550,17 +594,20 @@ log " Detected desktop: $DESKTOP_ENV"
 log "=============================================================================="
 
 print_stage "STAGE 0: PACKAGE MANAGER PREFLIGHT"
+check_platform || exit 1
 ensure_sudo_session || exit 1
 check_dnf_health || exit 1
+create_pre_bootstrap_snapshot || exit 1
 
 print_stage "STAGE 1: SYSTEM UPDATES & OPTIMIZATIONS"
-sudo tee /etc/dnf/dnf.conf << 'EOF' >> "$BOOTSTRAP_LOG"
+sudo mkdir -p /etc/dnf/dnf.conf.d
+sudo tee /etc/dnf/dnf.conf.d/99-bootstrap.conf << 'EOF' >> "$BOOTSTRAP_LOG"
 [main]
 fastestmirror=True
 max_parallel_downloads=10
 defaultyes=True
 EOF
-record_success "Configured /etc/dnf/dnf.conf"
+record_success "Configured /etc/dnf/dnf.conf.d/99-bootstrap.conf"
 
 run_step "System upgrade" sudo dnf5 upgrade -y || exit 1
 SELECTED_DNF_PACKAGES=()
@@ -584,7 +631,7 @@ if [[ "$INSTALL_FLATPAKS" -eq 1 ]]; then install_flatpaks; fi
 if [[ "$INSTALL_VSCODE" -eq 1 || "$INSTALL_EDGE" -eq 1 ]]; then install_microsoft_signing_key; fi
 if [[ "$INSTALL_VSCODE" -eq 1 ]]; then install_vscode_rpm; fi
 if [[ "$INSTALL_EDGE" -eq 1 ]]; then install_edge_rpm; fi
-install_desktop_packages
+if [[ "$INSTALL_CORE" -eq 1 ]]; then install_desktop_packages; else log "Desktop utility installation skipped with core packages"; fi
 if [[ "$INSTALL_TAILSCALE" -eq 1 ]]; then install_tailscale; fi
 
 print_stage "STAGE 3: CLOUD AI CLI TOOLING"
