@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Fedora bootstrap entrypoint; validation runs against the current Fedora image.
 # ==============================================================================
 # UNATTENDED AI DEVELOPMENT ENVIRONMENT BOOTSTRAP - FEDORA (DNF5)
 # ==============================================================================
