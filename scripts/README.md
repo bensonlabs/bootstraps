@@ -64,6 +64,12 @@ Purpose:
 - Reduce manual workstation setup steps
 - Provide repeatable automation across platforms
 
+Bootstrap selection behavior:
+
+* `bootstrap_windows.ps1` shows a checklist by default; WSL is opt-in via the checklist or `-IncludeWsl`. Use `-All` for unattended execution without WSL.
+* `bootstrap_ubuntu.sh`, `bootstrap_macOS.sh`, and `bootstrap_fedora.sh` show checklists by default; use `--all` for unattended execution.
+* The Windows script generates the post-reboot WSL provisioner itself; `bootstrap_ubuntu.sh` is the native Ubuntu bootstrap.
+
 ## Usage
 
 Run scripts from the root of the repository unless otherwise documented.

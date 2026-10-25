@@ -33,7 +33,6 @@ winget install --id Microsoft.Sysinternals.Suite -e --accept-package-agreements 
 winget install --id Git.Git -e --accept-package-agreements --accept-source-agreements
 winget install --id GitHub.cli -e --accept-package-agreements --accept-source-agreements
 winget install --id GitHub.GitHubDesktop -e --accept-package-agreements --accept-source-agreements
-winget install --id GitHub.Copilot -e --accept-package-agreements --accept-source-agreements
 winget install --id Python.Python.3.13 -e --accept-package-agreements --accept-source-agreements
 winget install --id Microsoft.VisualStudioCode -e --accept-package-agreements --accept-source-agreements
 

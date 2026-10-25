@@ -54,9 +54,7 @@ FLATPAK_APPS=(
 AI_CLI_CHECKS=(
     "Claude Code:claude --version"
     "Codex CLI:codex --version"
-    "GitHub Copilot CLI:copilot --version"
     "one-file-context:one-file-context --help"
-    "Zed:zed --version"
     "Node.js:node --version"
     "npm:npm --version"
     "Python:python3 --version"
@@ -519,8 +517,6 @@ if [[ "$INSTALL_AI" -eq 1 ]]; then
     ensure_npm_global_path || exit 1
     install_shell_cli "Claude Code" "npm install -g @anthropic-ai/claude-code" claude
     install_shell_cli "Codex CLI" "npm install -g @openai/codex" codex
-    install_shell_cli "GitHub Copilot CLI" "curl -fsSL https://gh.io/copilot-install | bash" copilot
-    install_shell_cli "Zed IDE" "curl -fsSL https://zed.dev/install.sh | sh" zed
     install_shell_cli "one-file-context" "npm install -g one-file-context" one-file-context
 fi
 

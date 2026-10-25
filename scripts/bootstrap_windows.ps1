@@ -7,6 +7,8 @@
 #
 #   .\bootstrap_windows.ps1                        Full run, ends in a reboot
 #   .\bootstrap_windows.ps1 -NoReboot -SkipWsl     Iterate without rebooting
+#   .\bootstrap_windows.ps1 -All                   Full run without WSL
+#   .\bootstrap_windows.ps1 -All -IncludeWsl      Full run including WSL
 #   .\bootstrap_windows.ps1 -KeepLogs 10           Keep more history
 #
 # Must be run from an elevated session.
@@ -27,6 +29,9 @@ param(
 
     # Skip the interactive component checklist.
     [switch]$All
+
+    # Explicitly opt in to WSL provisioning. WSL is never selected by -All.
+    [switch]$IncludeWsl
 )
 
 $ErrorActionPreference = 'Stop'
@@ -46,7 +51,7 @@ $WslStageRegistered = $false
 $InstallCore = $true
 $InstallContainers = $true
 $InstallAi = $true
-$InstallWsl = -not $SkipWsl
+$InstallWsl = $IncludeWsl -and -not $SkipWsl
 
 # Resolve the Desktop through the shell API rather than assuming
 # "$env:USERPROFILE\Desktop". With OneDrive Known Folder Move enabled the real
@@ -283,7 +288,7 @@ function Select-Components {
             @{ Number = 1; Name = 'Core applications and developer tools'; Key = 'InstallCore' },
             @{ Number = 2; Name = 'Docker Desktop and virtualization'; Key = 'InstallContainers' },
             @{ Number = 3; Name = 'AI CLI tools'; Key = 'InstallAi' },
-            @{ Number = 4; Name = 'WSL2 Ubuntu provisioner'; Key = 'InstallWsl' }
+            @{ Number = 4; Name = 'WSL2 Ubuntu provisioner (opt-in)'; Key = 'InstallWsl' }
         )
         foreach ($item in $items) {
             $mark = if ((Get-Variable -Name $item.Key -ValueOnly)) { 'x' } else { ' ' }
@@ -454,7 +459,6 @@ if (Test-SysinternalsInstalled) {
 Invoke-WingetInstall "Git" "Git.Git"
 Invoke-WingetInstall "GitHub CLI" "GitHub.cli"
 Invoke-WingetInstall "GitHub Desktop" "GitHub.GitHubDesktop"
-Invoke-WingetInstall "GitHub Copilot" "GitHub.Copilot"
 Invoke-WingetInstall "Python $PythonVersion" "Python.Python.$PythonVersion"
 Invoke-WingetInstall "Visual Studio Code" "Microsoft.VisualStudioCode"
 Invoke-WingetInstall "Node.js LTS" "OpenJS.NodeJS.LTS"
@@ -467,7 +471,6 @@ Invoke-WingetInstall "Bitwarden" "Bitwarden.Bitwarden"
 Invoke-WingetInstall "Obsidian" "Obsidian.Obsidian"
 Invoke-WingetInstall "ChatGPT" "9NT1R1C2HH7J" -Source "msstore"
 Invoke-WingetInstall "Claude Desktop" "Anthropic.Claude"
-Invoke-WingetInstall "Zed" "ZedIndustries.Zed"
 
 Refresh-Path
 
@@ -545,7 +548,6 @@ Print-Stage "STAGE 3: WINDOWS AI CLI TOOLS"
 if ($InstallAi) {
 Install-NpmCliIfMissing "Claude Code" "claude" "@anthropic-ai/claude-code" { npm install -g @anthropic-ai/claude-code }
 Install-NpmCliIfMissing "Codex CLI" "codex" "@openai/codex" { npm install -g @openai/codex }
-Install-NpmCliIfMissing "GitHub Copilot CLI" "copilot" "@github/copilot" { npm install -g @github/copilot }
 }
 
 Print-Stage "STAGE 4: WINDOWS STACK VERIFICATION"
@@ -564,12 +566,11 @@ Invoke-OptionalStep "List global npm packages" { npm list -g --depth=0 }
 Write-Log "--- AI TOOLS ---"
 Invoke-OptionalStep "Check Claude Code version" { claude --version }
 Invoke-OptionalStep "Check Codex CLI version" { codex --version }
-Invoke-OptionalStep "Check GitHub Copilot CLI version" { copilot --version }
 Write-Log "------------------------------------------------"
 Write-Log "Windows bootstrap stage complete."
 
 if ($SkipWsl -or -not $InstallWsl) {
-    Print-Stage "STAGE 5: SKIPPED (-SkipWsl)"
+    Print-Stage "STAGE 5: SKIPPED (WSL opt-in not selected)"
     Record-Success "Skipped WSL provisioner generation and RunOnce registration"
 } else {
     Print-Stage "STAGE 5: GENERATE POST-REBOOT WSL PROVISIONER & SCHEDULER"

@@ -33,8 +33,6 @@ These should be present on all four platforms.
 |---|---|
 | Claude Code | `claude` |
 | Codex CLI | `codex` |
-| GitHub Copilot CLI | `copilot` |
-| Google Antigravity CLI | `agy` |
 | one-file-context | `one-file-context` |
 
 ## Required Cross-Platform GUI Applications
@@ -49,11 +47,6 @@ These should be installed on all four platforms where packaging is available.
 | Obsidian | yes | yes | yes | yes |
 | ChatGPT | yes | yes | yes | yes |
 | Claude Desktop | yes | yes | yes | yes |
-| Zed | yes | yes | yes | yes |
-| Google Antigravity IDE/app | yes* | yes* | yes* | yes |
-| GitHub Copilot desktop app | yes* | yes* | yes* | yes |
-
-`*` Required where packaging or a reliable unattended installer path is available. If not scriptable on a given platform, treat as a required manual follow-up for full parity.
 
 ## Optional Cross-Platform GUI Applications
 
@@ -89,9 +82,6 @@ User identity may remain machine- or user-specific.
 
 ### Highest priority
 
-- Ensure Google Antigravity IDE/app is installed on every platform where packaging or a reliable unattended installer exists.
-- Ensure GitHub Copilot desktop app is installed on every platform where packaging or a reliable unattended installer exists.
-- Where either app is not yet scriptable on a platform, document the required manual follow-up step.
 - Keep the final user-facing commands consistent for required CLI tooling.
 
 ### Verification parity
@@ -104,8 +94,6 @@ Every platform should verify these commands when applicable:
 - `npm --version`
 - `claude --version`
 - `codex --version`
-- `copilot --version`
-- `agy --version`
 - `one-file-context --help` or command presence
 - `fastfetch`
 
@@ -119,9 +107,6 @@ The scripts should converge on this GUI baseline:
 - Obsidian
 - ChatGPT
 - Claude Desktop
-- Zed
-- Google Antigravity IDE/app
-- GitHub Copilot desktop app
 
 Brave may remain optional.
 

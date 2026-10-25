@@ -30,7 +30,9 @@ Contains:
 * Windows Terminal configuration
 * VS Code configuration
 
-Bootstrap script: `scripts/bootstrap_windows.ps1`
+Bootstrap script: [`scripts/bootstrap_windows.ps1`](scripts/bootstrap_windows.ps1)
+
+The Windows script presents an interactive checklist by default, with WSL opt-in. Use `-All` for an unattended run without WSL, `-IncludeWsl` to enable WSL provisioning, `-SkipWsl` to force it off, or `-NoReboot` to prevent the final reboot.
 
 ### WSL2 Ubuntu
 
@@ -41,11 +43,13 @@ Contains:
 * Package inventories
 * Linux-specific configuration
 
-Bootstrapped as Stage 2 of `scripts/bootstrap_windows.ps1`.
+Bootstrapped as Stage 2 of [`scripts/bootstrap_windows.ps1`](scripts/bootstrap_windows.ps1). The standalone Ubuntu script below is for native Ubuntu installations, not the generated WSL stage.
 
 ### macOS
 
-Bootstrap script available: scripts/bootstrap_macOS.sh
+Bootstrap script: [`scripts/bootstrap_macOS.sh`](scripts/bootstrap_macOS.sh)
+
+The macOS script presents an interactive checklist by default. Use `--all` for an unattended run.
 
 Contains:
 
@@ -53,7 +57,9 @@ Contains:
 
 ### Fedora Workstation KDE Plasma
 
-Bootstrap script available: scripts/bootstrap_fedora.sh
+Bootstrap script: [`scripts/bootstrap_fedora.sh`](scripts/bootstrap_fedora.sh)
+
+The Fedora script presents an interactive checklist by default. Use `--all` for an unattended run.
 
 Contains:
 

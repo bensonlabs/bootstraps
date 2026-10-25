@@ -47,7 +47,6 @@ BREW_CASKS=(
     bitwarden
     slack
     claude
-    zed
 )
 
 AI_CLI_CHECKS=(
@@ -306,14 +305,6 @@ install_shell_cli() {
     fi
 }
 
-verify_github_copilot_cli() {
-    if command -v copilot >/dev/null 2>&1; then
-        record_success "Verified GitHub Copilot CLI command is present"
-    else
-        warn "GitHub Copilot CLI command not found in PATH; continuing"
-    fi
-}
-
 create_ll_wrapper() {
     if ! command -v gls >/dev/null 2>&1; then
         warn "gls not available; skipping ll wrapper creation"
@@ -444,7 +435,6 @@ if [[ "$INSTALL_AI" -eq 1 ]]; then
     ensure_npm_global_path || exit 1
     install_shell_cli "Claude Code" "npm install -g @anthropic-ai/claude-code" claude
     install_shell_cli "Codex CLI" "npm install -g @openai/codex" codex
-    install_shell_cli "GitHub Copilot CLI" "PREFIX=$HOME/.npm-global bash -c 'curl -fsSL https://gh.io/copilot-install | bash'" copilot
 fi
 
 print_stage "STAGE 3: GUI APPLICATIONS"
@@ -466,7 +456,6 @@ log ""
 log "--- AI TOOLING ---"
 if [[ "$INSTALL_AI" -eq 1 ]]; then
     verify_ai_clis
-    verify_github_copilot_cli
 else
     log "AI CLI verification skipped"
 fi
