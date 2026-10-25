@@ -8,7 +8,7 @@ foreach ($required in @(
     '$InstallWsl = $IncludeWsl -and -not $SkipWsl',
     'if ($SkipWsl -or -not $InstallWsl)'
 )) {
-    if ($script -notlike "*$required*") {
+    if (-not $script.Contains($required)) {
         throw "Expected Windows bootstrap content was not found: $required"
     }
 }
