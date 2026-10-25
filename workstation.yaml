@@ -1,0 +1,120 @@
+schema_version: 1
+workstation_spec_version: "1.0"
+
+profiles:
+  core:
+    description: Minimal command-line development foundation.
+    includes: [git, gh, node, python, ripgrep]
+  developer:
+    description: General development workstation.
+    extends: core
+    includes: [vscode, fastfetch]
+  ai-dev:
+    description: Developer profile plus AI coding CLIs.
+    extends: developer
+    includes: [claude, codex]
+  desktop:
+    description: Desktop productivity applications.
+    includes: [slack, bitwarden, obsidian]
+  full:
+    description: Complete workstation target.
+    extends: ai-dev
+    includes: [desktop]
+
+tools:
+  git:
+    command: git
+    verify: "git --version"
+    packages:
+      windows: Git.Git
+      fedora: git
+      ubuntu: git
+      macos: git
+  gh:
+    command: gh
+    verify: "gh --version"
+    packages:
+      windows: GitHub.cli
+      fedora: gh
+      ubuntu: gh
+      macos: gh
+  node:
+    command: node
+    verify: "node --version"
+    packages:
+      windows: OpenJS.NodeJS.LTS
+      fedora: nodejs
+      ubuntu: nodejs
+      macos: node
+  python:
+    command: python
+    verify: "python --version"
+    packages:
+      windows: Python.Python.3.13
+      fedora: python3
+      ubuntu: python3
+      macos: python
+  ripgrep:
+    command: rg
+    verify: "rg --version"
+    packages:
+      windows: BurntSushi.ripgrep.MSVC
+      fedora: ripgrep
+      ubuntu: ripgrep
+      macos: ripgrep
+  vscode:
+    command: code
+    verify: "code --version"
+    packages:
+      windows: Microsoft.VisualStudioCode
+      fedora: code
+      ubuntu: code
+      macos: visual-studio-code
+  fastfetch:
+    command: fastfetch
+    verify: "fastfetch --version"
+    packages:
+      windows: Fastfetch-cli.Fastfetch
+      fedora: fastfetch
+      ubuntu: fastfetch
+      macos: fastfetch
+  claude:
+    command: claude
+    verify: "claude --version"
+    installer:
+      type: npm
+      package: "@anthropic-ai/claude-code"
+  codex:
+    command: codex
+    verify: "codex --version"
+    installer:
+      type: npm
+      package: "@openai/codex"
+  slack:
+    packages:
+      windows: SlackTechnologies.Slack
+      fedora: com.slack.Slack
+      macos: slack
+  bitwarden:
+    packages:
+      windows: Bitwarden.Bitwarden
+      fedora: com.bitwarden.desktop
+      macos: bitwarden
+  obsidian:
+    packages:
+      windows: Obsidian.Obsidian
+      fedora: md.obsidian.Obsidian
+      macos: obsidian
+
+operations:
+  install:
+    description: Converge missing selected components toward the desired state without intentionally upgrading existing components.
+  verify:
+    description: Inspect state only and report conformance. Must not modify the machine.
+  upgrade:
+    description: Future explicit operation. Normal bootstrap execution must not silently perform broad upgrades.
+
+report:
+  format: json
+  filename: machine-state.json
+  required_fields: [timestamp, platform, profile, workstation_spec_version, status, tools]

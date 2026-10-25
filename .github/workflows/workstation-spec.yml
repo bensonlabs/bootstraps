@@ -1,0 +1,44 @@
+name: Workstation specification validation
+
+on:
+  push:
+    paths:
+      - 'workstation.yaml'
+      - 'scripts/verify_spec.py'
+      - 'AGENTS.md'
+      - 'SECURITY.md'
+      - 'docs/maturity-roadmap.md'
+      - 'docs/platform-support.md'
+      - '.github/workflows/workstation-spec.yml'
+  pull_request:
+    paths:
+      - 'workstation.yaml'
+      - 'scripts/verify_spec.py'
+      - 'AGENTS.md'
+      - 'SECURITY.md'
+      - 'docs/maturity-roadmap.md'
+      - 'docs/platform-support.md'
+      - '.github/workflows/workstation-spec.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-spec:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate desired-state contract
+        run: python3 scripts/verify_spec.py
+      - name: Validate verification contract
+        run: python3 tests/test_workstation_spec.py
+      - name: Reject common secret file types
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-files | grep -E '(^|/)(\.env($|\.)|id_rsa$|id_ed25519$|.*\.p12$|.*\.pfx$|.*\.key$)' ; then
+            echo "Potential secret-bearing file is tracked."
+            exit 1
+          fi
