@@ -9,11 +9,23 @@ WARNINGS=()
 SUCCESSES=()
 DESKTOP_ENV="${XDG_CURRENT_DESKTOP:-unknown}"
 SKIP_FLATPAK_INSTALLS=0
+FLATPAK_INSTALLED_APPS=""
 FATAL_ERROR=0
+INTERACTIVE=1
+INSTALL_CORE=1
+INSTALL_DEVELOPMENT=1
+INSTALL_VSCODE=1
+INSTALL_EDGE=1
+INSTALL_FLATPAKS=1
+INSTALL_TAILSCALE=1
+INSTALL_AI=1
+
+if [[ "${1:-}" == "--all" ]]; then
+    INTERACTIVE=0
+fi
 
 BASE_PACKAGES=(
     curl
-    wget
     git
     gh
     p7zip
@@ -48,7 +60,6 @@ DEVELOPMENT_PACKAGES=(
 )
 
 FLATPAK_APPS=(
-    com.visualstudio.code
     com.brave.Browser
     com.bitwarden.desktop
     md.obsidian.Obsidian
@@ -57,6 +68,9 @@ FLATPAK_APPS=(
     com.anthropic.claude
     dev.zed.Zed
 )
+
+VSCODE_REPO_FILE="/etc/yum.repos.d/vscode.repo"
+EDGE_REPO_FILE="/etc/yum.repos.d/microsoft-edge.repo"
 
 AI_CLI_CHECKS=(
     "Claude Code:claude --version"
@@ -70,6 +84,81 @@ AI_CLI_CHECKS=(
     "fastfetch:fastfetch --version"
     "7zip:7z"
 )
+
+component_name() {
+    case "$1" in
+        1) echo "Core packages" ;;
+        2) echo "Development toolchain" ;;
+        3) echo "Visual Studio Code (RPM)" ;;
+        4) echo "Microsoft Edge (RPM)" ;;
+        5) echo "Flatpak applications" ;;
+        6) echo "Tailscale" ;;
+        7) echo "AI CLI tools" ;;
+    esac
+}
+
+component_selected() {
+    case "$1" in
+        1) [[ "$INSTALL_CORE" -eq 1 ]] ;;
+        2) [[ "$INSTALL_DEVELOPMENT" -eq 1 ]] ;;
+        3) [[ "$INSTALL_VSCODE" -eq 1 ]] ;;
+        4) [[ "$INSTALL_EDGE" -eq 1 ]] ;;
+        5) [[ "$INSTALL_FLATPAKS" -eq 1 ]] ;;
+        6) [[ "$INSTALL_TAILSCALE" -eq 1 ]] ;;
+        7) [[ "$INSTALL_AI" -eq 1 ]] ;;
+    esac
+}
+
+toggle_component() {
+    case "$1" in
+        1) INSTALL_CORE=$((1 - INSTALL_CORE)) ;;
+        2) INSTALL_DEVELOPMENT=$((1 - INSTALL_DEVELOPMENT)) ;;
+        3) INSTALL_VSCODE=$((1 - INSTALL_VSCODE)) ;;
+        4) INSTALL_EDGE=$((1 - INSTALL_EDGE)) ;;
+        5) INSTALL_FLATPAKS=$((1 - INSTALL_FLATPAKS)) ;;
+        6) INSTALL_TAILSCALE=$((1 - INSTALL_TAILSCALE)) ;;
+        7) INSTALL_AI=$((1 - INSTALL_AI)) ;;
+    esac
+}
+
+select_components() {
+    local choice mark
+
+    if [[ "$INTERACTIVE" -eq 0 || ! -t 0 ]]; then
+        return 0
+    fi
+
+    while true; do
+        clear
+        echo "Fedora workstation bootstrap"
+        echo "Toggle items with their number. Press Enter when finished."
+        echo
+        for choice in {1..7}; do
+            if component_selected "$choice"; then mark="x"; else mark=" "; fi
+            printf '[%s] %s) %s\n' "$mark" "$choice" "$(component_name "$choice")"
+        done
+        echo
+        read -r -p "Toggle item(s), or press Enter to continue: " choices
+        [[ -z "$choices" ]] && break
+        for choice in $choices; do
+            if [[ "$choice" =~ ^[1-7]$ ]]; then
+                toggle_component "$choice"
+            else
+                echo "Ignoring invalid selection: $choice"
+            fi
+        done
+    done
+
+    echo
+    echo "Selected components:"
+    for choice in {1..7}; do
+        if component_selected "$choice"; then
+            echo "  - $(component_name "$choice")"
+        fi
+    done
+    read -r -p "Proceed with installation? [y/N] " confirmation
+    [[ "$confirmation" =~ ^[Yy]$ ]] || exit 0
+}
 
 log() {
     echo "$*" | tee -a "$BOOTSTRAP_LOG"
@@ -170,14 +259,80 @@ install_flatpaks() {
     fi
 
     record_success "Configured Flathub remote"
+    FLATPAK_INSTALLED_APPS="$(flatpak list --app --columns=application 2>/dev/null || true)"
 
     for app in "${FLATPAK_APPS[@]}"; do
-        if flatpak list --app --columns=application | grep -Fxq "$app"; then
+        if grep -Fxq "$app" <<< "$FLATPAK_INSTALLED_APPS"; then
             record_success "Flatpak already installed: $app"
         else
             run_optional_step "Install Flatpak: $app" sudo flatpak install flathub "$app" -y
         fi
     done
+}
+
+install_microsoft_signing_key() {
+    if sudo rpm -q gpg-pubkey --qf '%{summary}\n' 2>/dev/null | grep -Fq 'Microsoft'; then
+        record_success "Microsoft signing key already imported"
+    elif sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc 2>&1 | tee -a "$BOOTSTRAP_LOG"; then
+        record_success "Imported Microsoft signing key"
+    else
+        fatal "Failed to import the Microsoft signing key"
+        return 1
+    fi
+}
+
+install_vscode_rpm() {
+    log "Configuring the official Microsoft VS Code RPM repository..."
+
+    if ! sudo tee "$VSCODE_REPO_FILE" > /dev/null <<'EOF' 2>>"$BOOTSTRAP_LOG"
+[code]
+name=Visual Studio Code
+baseurl=https://packages.microsoft.com/yumrepos/vscode
+enabled=1
+autorefresh=1
+type=rpm-md
+gpgcheck=1
+gpgkey=https://packages.microsoft.com/keys/microsoft.asc
+EOF
+    then
+        fatal "Failed to configure the Microsoft VS Code RPM repository"
+        return 1
+    fi
+
+    record_success "Configured Microsoft VS Code RPM repository"
+
+    if rpm -q code >> "$BOOTSTRAP_LOG" 2>&1; then
+        record_success "VS Code RPM already installed"
+    else
+        run_step "Install VS Code RPM" sudo dnf5 install -y code || return 1
+    fi
+}
+
+install_edge_rpm() {
+    log "Configuring the official Microsoft Edge stable RPM repository..."
+
+    if ! sudo tee "$EDGE_REPO_FILE" > /dev/null <<'EOF' 2>>"$BOOTSTRAP_LOG"
+[microsoft-edge]
+name=Microsoft Edge
+baseurl=https://packages.microsoft.com/yumrepos/edge-stable
+enabled=1
+autorefresh=1
+type=rpm-md
+gpgcheck=1
+gpgkey=https://packages.microsoft.com/keys/microsoft.asc
+EOF
+    then
+        fatal "Failed to configure the Microsoft Edge RPM repository"
+        return 1
+    fi
+
+    record_success "Configured Microsoft Edge stable RPM repository"
+
+    if rpm -q microsoft-edge-stable >> "$BOOTSTRAP_LOG" 2>&1; then
+        record_success "Microsoft Edge stable RPM already installed"
+    else
+        run_step "Install Microsoft Edge stable RPM" sudo dnf5 install -y microsoft-edge-stable || return 1
+    fi
 }
 
 get_desktop_packages() {
@@ -269,14 +424,6 @@ verify_github_copilot_cli() {
     fi
 }
 
-verify_agy_cli() {
-    if command -v agy >/dev/null 2>&1; then
-        record_success "Verified Google Antigravity CLI command is present"
-    else
-        warn "Google Antigravity CLI command not found in PATH; continuing"
-    fi
-}
-
 verify_ai_clis() {
     local entry description command
     for entry in "${AI_CLI_CHECKS[@]}"; do
@@ -294,13 +441,64 @@ verify_flatpaks() {
         return 0
     fi
 
+    FLATPAK_INSTALLED_APPS="$(flatpak list --app --columns=application 2>/dev/null || true)"
+
     for app in "${FLATPAK_APPS[@]}"; do
-        if flatpak list --app --columns=application | grep -Fxq "$app"; then
+        if grep -Fxq "$app" <<< "$FLATPAK_INSTALLED_APPS"; then
             record_success "Verified Flatpak: $app"
         else
             warn "Missing expected Flatpak: $app"
         fi
     done
+}
+
+verify_vscode_rpm() {
+    local package_metadata
+
+    if ! rpm -q code >> "$BOOTSTRAP_LOG" 2>&1; then
+        warn "VS Code RPM package is not installed"
+        return 0
+    fi
+
+    package_metadata="$(rpm -q code --qf '%{NAME} %{VERSION}-%{RELEASE} %{VENDOR} %{PACKAGER}\n')"
+    log "VS Code RPM: $package_metadata"
+
+    if [[ "$package_metadata" == *"Microsoft"* ]]; then
+        record_success "Verified VS Code is installed from the Microsoft RPM package"
+    else
+        warn "VS Code is installed, but its RPM vendor/packager is not Microsoft: $package_metadata"
+    fi
+
+        FLATPAK_INSTALLED_APPS="$(flatpak list --app --columns=application 2>/dev/null || true)"
+        if grep -Fxq "com.visualstudio.code" <<< "$FLATPAK_INSTALLED_APPS"; then
+        warn "Flatpak VS Code is installed alongside the RPM package"
+    else
+        record_success "Verified Flatpak VS Code is not installed"
+    fi
+}
+
+verify_edge_rpm() {
+    local package_metadata
+
+    if ! rpm -q microsoft-edge-stable >> "$BOOTSTRAP_LOG" 2>&1; then
+        warn "Microsoft Edge stable RPM package is not installed"
+        return 0
+    fi
+
+    package_metadata="$(rpm -q microsoft-edge-stable --qf '%{NAME} %{VERSION}-%{RELEASE} %{VENDOR} %{PACKAGER}\n')"
+    log "Microsoft Edge RPM: $package_metadata"
+
+    if [[ "$package_metadata" == *"Microsoft"* ]]; then
+        record_success "Verified Microsoft Edge is installed from the Microsoft RPM package"
+    else
+        warn "Microsoft Edge is installed, but its RPM vendor/packager is not Microsoft: $package_metadata"
+    fi
+
+    if grep -Fxq "com.microsoft.Edge" <<< "$FLATPAK_INSTALLED_APPS"; then
+        warn "Flatpak Microsoft Edge is installed alongside the RPM package"
+    else
+        record_success "Verified Flatpak Microsoft Edge is not installed"
+    fi
 }
 
 print_summary() {
@@ -343,6 +541,8 @@ finish() {
 
 trap finish EXIT
 
+select_components
+
 log "=============================================================================="
 log " FEDORA AI DEV BOOTSTRAP"
 log " Log file: $BOOTSTRAP_LOG"
@@ -363,23 +563,37 @@ EOF
 record_success "Configured /etc/dnf/dnf.conf"
 
 run_step "System upgrade" sudo dnf5 upgrade -y || exit 1
-run_step "Development package install" sudo dnf5 install -y "${DEVELOPMENT_PACKAGES[@]}" || exit 1
-run_step "Base package install" sudo dnf5 install -y "${BASE_PACKAGES[@]}" || exit 1
+SELECTED_DNF_PACKAGES=()
+if [[ "$INSTALL_DEVELOPMENT" -eq 1 ]]; then
+    SELECTED_DNF_PACKAGES+=("${DEVELOPMENT_PACKAGES[@]}")
+fi
+if [[ "$INSTALL_CORE" -eq 1 ]]; then
+    SELECTED_DNF_PACKAGES+=("${BASE_PACKAGES[@]}")
+fi
+if [[ ${#SELECTED_DNF_PACKAGES[@]} -gt 0 ]]; then
+    run_step "Selected development and base package install" sudo dnf5 install -y "${SELECTED_DNF_PACKAGES[@]}" || exit 1
+else
+    log "Skipping core and development package installation"
+fi
 run_optional_step "Git config core.fscache" git config --global core.fscache true
 run_optional_step "Git config core.preloadindex" git config --global core.preloadindex true
 run_optional_step "Git config gc.auto" git config --global gc.auto 256
 
 print_stage "STAGE 2: APPLICATION RUNTIMES & REPOSITORIES"
-install_flatpaks
+if [[ "$INSTALL_FLATPAKS" -eq 1 ]]; then install_flatpaks; fi
+if [[ "$INSTALL_VSCODE" -eq 1 || "$INSTALL_EDGE" -eq 1 ]]; then install_microsoft_signing_key; fi
+if [[ "$INSTALL_VSCODE" -eq 1 ]]; then install_vscode_rpm; fi
+if [[ "$INSTALL_EDGE" -eq 1 ]]; then install_edge_rpm; fi
 install_desktop_packages
-install_tailscale
+if [[ "$INSTALL_TAILSCALE" -eq 1 ]]; then install_tailscale; fi
 
 print_stage "STAGE 3: CLOUD AI CLI TOOLING"
-ensure_npm_global_path || exit 1
-install_shell_cli "Claude Code" "npm install -g @anthropic-ai/claude-code" claude
-install_shell_cli "Codex CLI" "npm install -g @openai/codex" codex
-install_shell_cli "Google Antigravity CLI" "curl -fsSL https://antigravity.google/cli/install.sh | bash" agy
-install_shell_cli "GitHub Copilot CLI" "PREFIX=$HOME/.npm-global bash -c 'curl -fsSL https://gh.io/copilot-install | bash'" copilot
+if [[ "$INSTALL_AI" -eq 1 ]]; then
+    ensure_npm_global_path || exit 1
+    install_shell_cli "Claude Code" "npm install -g @anthropic-ai/claude-code" claude
+    install_shell_cli "Codex CLI" "npm install -g @openai/codex" codex
+    install_shell_cli "GitHub Copilot CLI" "PREFIX=$HOME/.npm-global bash -c 'curl -fsSL https://gh.io/copilot-install | bash'" copilot
+fi
 
 print_stage "STAGE 4: SYSTEM PRODUCTION VERIFICATION"
 log "--- VERIFYING FEDORA WORKSTATION ENGINE STACK ---"
@@ -392,15 +606,22 @@ log "--- NPM GLOBALS ---"
 run_optional_pipe_step "List global npm packages" "npm list -g --depth=0"
 log ""
 log "--- AI TOOLING ---"
-verify_ai_clis
-verify_github_copilot_cli
-verify_agy_cli
+if [[ "$INSTALL_AI" -eq 1 ]]; then
+    verify_ai_clis
+    verify_github_copilot_cli
+else
+    log "AI CLI verification skipped"
+fi
 log ""
 log "--- SYSTEM SERVICES ---"
 run_optional_step "Check Tailscale version" tailscale version
 log ""
 log "--- FLATPAKS ---"
-verify_flatpaks
+if [[ "$INSTALL_FLATPAKS" -eq 1 ]]; then verify_flatpaks; else log "Flatpak verification skipped"; fi
+log "--- VS CODE RPM ---"
+if [[ "$INSTALL_VSCODE" -eq 1 ]]; then verify_vscode_rpm; else log "VS Code verification skipped"; fi
+log "--- MICROSOFT EDGE RPM ---"
+if [[ "$INSTALL_EDGE" -eq 1 ]]; then verify_edge_rpm; else log "Microsoft Edge verification skipped"; fi
 log "------------------------------------------------"
 log "Bootstrap complete!"
 log ""
