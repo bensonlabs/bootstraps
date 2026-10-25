@@ -189,12 +189,12 @@ run_optional_pipe_step() {
 check_apt_health() {
     log "Running APT health preflight..."
 
-    if ! sudo apt-get update >> "$BOOTSTRAP_LOG" 2>&1; then
+    if ! { sudo apt-get update; } >> "$BOOTSTRAP_LOG" 2>&1; then
         fatal "APT update failed during preflight"
         return 1
     fi
 
-    if ! sudo apt-get check >> "$BOOTSTRAP_LOG" 2>&1; then
+    if ! { sudo apt-get check; } >> "$BOOTSTRAP_LOG" 2>&1; then
         fatal "APT health check failed; package state appears inconsistent. Restore a clean snapshot or repair the system before re-running."
         return 1
     fi
@@ -203,7 +203,7 @@ check_apt_health() {
 }
 
 ensure_sudo_session() {
-    if sudo -v >> "$BOOTSTRAP_LOG" 2>&1; then
+    if { sudo -v; } >> "$BOOTSTRAP_LOG" 2>&1; then
         record_success "Cached sudo credentials"
     else
         fatal "Unable to obtain sudo credentials"
@@ -306,7 +306,7 @@ install_flatpaks() {
         run_step "Install Flatpak runtime" sudo apt-get install -y flatpak || return 1
     fi
 
-    if ! sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo >> "$BOOTSTRAP_LOG" 2>&1; then
+    if ! { sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo; } >> "$BOOTSTRAP_LOG" 2>&1; then
         warn "Failed to add Flathub remote; skipping Flatpak app installs"
         SKIP_FLATPAK_INSTALLS=1
         return 0
@@ -359,8 +359,9 @@ ensure_npm_global_path() {
     record_success "Ensured npm global directory exists"
     run_step "Configure npm global prefix" npm config set prefix "$HOME/.npm-global" || return 1
 
-    if ! grep -Fqx 'export PATH="$HOME/.npm-global/bin:$PATH"' "$HOME/.bashrc" 2>/dev/null; then
-        echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> "$HOME/.bashrc"
+    local npm_path_line='export PATH="$HOME/.npm-global/bin:$PATH"'
+    if ! grep -Fqx "$npm_path_line" "$HOME/.bashrc" 2>/dev/null; then
+        echo "$npm_path_line" >> "$HOME/.bashrc"
         record_success "Added npm global bin PATH to ~/.bashrc"
     else
         record_success "npm global bin PATH already present in ~/.bashrc"
@@ -489,7 +490,7 @@ check_apt_health || exit 1
 create_pre_bootstrap_snapshot || exit 1
 
 print_stage "STAGE 1: SYSTEM UPDATES & OPTIMIZATIONS"
-sudo tee /etc/apt/apt.conf.d/99parallel-downloads << 'EOF' >> "$BOOTSTRAP_LOG"
+cat << 'EOF' | sudo tee /etc/apt/apt.conf.d/99parallel-downloads >> "$BOOTSTRAP_LOG"
 APT::Periodic::Enable "0";
 Binary::apt::APT::Keep-Downloaded-Packages "true";
 EOF

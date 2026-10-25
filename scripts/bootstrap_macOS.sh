@@ -274,8 +274,9 @@ ensure_npm_global_path() {
     record_success "Ensured npm global directory exists"
     run_step "Configure npm global prefix" npm config set prefix "$HOME/.npm-global" || return 1
 
-    if ! grep -Fqx 'export PATH="$HOME/.npm-global/bin:$PATH"' "$HOME/.zshrc" 2>/dev/null; then
-        echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> "$HOME/.zshrc"
+    local npm_path_line='export PATH="$HOME/.npm-global/bin:$PATH"'
+    if ! grep -Fqx "$npm_path_line" "$HOME/.zshrc" 2>/dev/null; then
+        echo "$npm_path_line" >> "$HOME/.zshrc"
         record_success "Added npm global bin PATH to ~/.zshrc"
     else
         record_success "npm global bin PATH already present in ~/.zshrc"

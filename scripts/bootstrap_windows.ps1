@@ -25,10 +25,10 @@ param(
 
     # How many bootstrap logs to retain in the user profile.
     [ValidateRange(1, 100)]
-    [int]$KeepLogs = 5
+    [int]$KeepLogs = 5,
 
     # Skip the interactive component checklist.
-    [switch]$All
+    [switch]$All,
 
     # Explicitly opt in to WSL provisioning. WSL is never selected by -All.
     [switch]$IncludeWsl
