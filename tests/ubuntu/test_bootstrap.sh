@@ -2,10 +2,11 @@
 set -euo pipefail
 
 script="scripts/bootstrap_ubuntu.sh"
-contains() { grep -Fq "$1" "$script"; }
+contains() { grep -Fq -- "$1" "$script"; }
 absent() { ! grep -Fqi "$1" "$script"; }
 
 contains 'select_components'
+contains '--dry-run'
 contains 'check_platform'
 contains 'create_pre_bootstrap_snapshot'
 contains 'apt.conf.d/99parallel-downloads'

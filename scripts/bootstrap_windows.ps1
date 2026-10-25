@@ -31,7 +31,10 @@ param(
     [switch]$All,
 
     # Explicitly opt in to WSL provisioning. WSL is never selected by -All.
-    [switch]$IncludeWsl
+    [switch]$IncludeWsl,
+
+    # Show the selected plan without changing the system.
+    [switch]$DryRun
 )
 
 $ErrorActionPreference = 'Stop'
@@ -378,6 +381,16 @@ Write-Log ("=" * 78)
 
 Print-Stage "STAGE 0: PACKAGE MANAGER PREFLIGHT"
 Select-Components
+if ($DryRun) {
+    Write-Log "DRY RUN: no system changes will be made."
+    Write-Log "Selected components:"
+    if ($InstallCore) { Write-Log "  - Core applications and developer tools" }
+    if ($InstallContainers) { Write-Log "  - Docker Desktop and virtualization" }
+    if ($InstallAi) { Write-Log "  - AI CLI tools" }
+    if ($InstallWsl) { Write-Log "  - WSL2 Ubuntu provisioner" }
+    Write-Log "Would install or configure the selected Windows components."
+    exit 0
+}
 if (-not (Invoke-PreflightChecks)) {
     Print-Summary
     exit 1

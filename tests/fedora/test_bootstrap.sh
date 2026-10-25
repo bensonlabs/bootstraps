@@ -5,7 +5,7 @@ script="scripts/bootstrap_fedora.sh"
 
 assert_contains() {
     local pattern="$1"
-    grep -Fq "$pattern" "$script" || {
+    grep -Fq -- "$pattern" "$script" || {
         echo "Expected Fedora bootstrap content was not found: $pattern" >&2
         exit 1
     }
@@ -20,7 +20,8 @@ assert_not_contains() {
 }
 
 assert_contains 'select_components'
-assert_contains 'if [[ "${1:-}" == "--all" ]]'
+assert_contains '--dry-run'
+assert_contains '--all) INTERACTIVE=0'
 assert_contains 'check_platform'
 assert_contains 'dnf.conf.d/99-bootstrap.conf'
 assert_contains 'create_pre_bootstrap_snapshot'

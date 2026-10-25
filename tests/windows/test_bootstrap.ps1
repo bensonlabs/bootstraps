@@ -5,6 +5,7 @@ foreach ($required in @(
     'Select-Components',
     '[switch]$All',
     '[switch]$IncludeWsl',
+    '[switch]$DryRun',
     '$InstallWsl = $IncludeWsl -and -not $SkipWsl',
     'if ($SkipWsl -or -not $InstallWsl)'
 )) {

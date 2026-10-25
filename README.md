@@ -32,7 +32,7 @@ Contains:
 
 Bootstrap script: [`scripts/bootstrap_windows.ps1`](scripts/bootstrap_windows.ps1)
 
-The Windows script presents an interactive checklist by default, with WSL opt-in. Use `-All` for an unattended run without WSL, `-IncludeWsl` to enable WSL provisioning, `-SkipWsl` to force it off, or `-NoReboot` to prevent the final reboot.
+The Windows script presents an interactive checklist by default, with WSL opt-in. Use `-All` for an unattended run without WSL, `-IncludeWsl` to enable WSL provisioning, `-SkipWsl` to force it off, `-DryRun` to print the selected plan without changing the system, or `-NoReboot` to prevent the final reboot.
 
 ### WSL2 Ubuntu
 
@@ -49,7 +49,7 @@ Bootstrapped as Stage 2 of [`scripts/bootstrap_windows.ps1`](scripts/bootstrap_w
 
 Bootstrap script: [`scripts/bootstrap_macOS.sh`](scripts/bootstrap_macOS.sh)
 
-The macOS script presents an interactive checklist by default. Use `--all` for an unattended run.
+The macOS script presents an interactive checklist by default. Use `--all` for an unattended run, or `--dry-run` to print the selected plan without changing the system.
 
 Contains:
 
@@ -59,7 +59,7 @@ Contains:
 
 Bootstrap script: [`scripts/bootstrap_fedora.sh`](scripts/bootstrap_fedora.sh)
 
-The Fedora script presents an interactive checklist by default. Use `--all` for an unattended run.
+The Fedora script presents an interactive checklist by default. Use `--all` for an unattended run, or `--dry-run` to print the selected plan without changing the system.
 
 Contains:
 

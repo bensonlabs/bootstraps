@@ -20,9 +20,16 @@ INSTALL_EDGE=1
 INSTALL_FLATPAKS=1
 INSTALL_TAILSCALE=1
 INSTALL_AI=1
+DRY_RUN=0
 
-if [[ "${1:-}" == "--all" ]]; then
-    INTERACTIVE=0
+for arg in "$@"; do
+    case "$arg" in
+        --all) INTERACTIVE=0 ;;
+        --dry-run) DRY_RUN=1 ;;
+    esac
+done
+if [[ "$DRY_RUN" -eq 1 ]]; then
+    BOOTSTRAP_LOG="${TMPDIR:-/tmp}/bootstrap_fedora_dry_run_$(date +%Y%m%d_%H%M%S).log"
 fi
 
 BASE_PACKAGES=(
@@ -579,6 +586,22 @@ finish() {
 trap finish EXIT
 
 select_components
+
+if [[ "$DRY_RUN" -eq 1 ]]; then
+    log "DRY RUN: no system changes will be made."
+    log "Selected components:"
+    for choice in {1..7}; do
+        component_selected "$choice" && log "  - $(component_name "$choice")"
+    done
+    [[ "$INSTALL_CORE" -eq 1 ]] && log "Would install Fedora base packages: ${BASE_PACKAGES[*]}"
+    [[ "$INSTALL_DEVELOPMENT" -eq 1 ]] && log "Would install development packages: ${DEVELOPMENT_PACKAGES[*]}"
+    [[ "$INSTALL_VSCODE" -eq 1 ]] && log "Would configure and install VS Code from the Microsoft RPM repository"
+    [[ "$INSTALL_EDGE" -eq 1 ]] && log "Would configure and install Microsoft Edge stable from the Microsoft RPM repository"
+    [[ "$INSTALL_FLATPAKS" -eq 1 ]] && log "Would install Flatpaks: ${FLATPAK_APPS[*]}"
+    [[ "$INSTALL_TAILSCALE" -eq 1 ]] && log "Would install and enable Tailscale"
+    [[ "$INSTALL_AI" -eq 1 ]] && log "Would install Claude Code and Codex CLI via npm"
+    exit 0
+fi
 
 log "=============================================================================="
 log " FEDORA AI DEV BOOTSTRAP"

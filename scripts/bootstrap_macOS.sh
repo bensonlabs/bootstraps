@@ -17,9 +17,18 @@ INSTALL_BREW_PACKAGES=1
 INSTALL_CASKS=1
 INSTALL_AI=1
 INSTALL_CUSTOMIZATION=1
+DRY_RUN=0
 REQUIRED_MACOS_MAJOR_VERSION=27
 
-if [[ "${1:-}" == "--all" ]]; then INTERACTIVE=0; fi
+for arg in "$@"; do
+    case "$arg" in
+        --all) INTERACTIVE=0 ;;
+        --dry-run) DRY_RUN=1 ;;
+    esac
+done
+if [[ "$DRY_RUN" -eq 1 ]]; then
+    BOOTSTRAP_LOG="${TMPDIR:-/tmp}/bootstrap_macos_dry_run_$(date +%Y%m%d_%H%M%S).log"
+fi
 BREW_PKG_URL="https://github.com/Homebrew/brew/releases/latest/download/Homebrew.pkg"
 BREW_PKG_PATH="/tmp/Homebrew.pkg"
 
@@ -412,6 +421,19 @@ finish() {
 trap finish EXIT
 
 select_components
+
+if [[ "$DRY_RUN" -eq 1 ]]; then
+    log "DRY RUN: no system changes will be made."
+    log "Selected components:"
+    for choice in {1..4}; do
+        component_selected "$choice" && log "  - $(component_name "$choice")"
+    done
+    [[ "$INSTALL_BREW_PACKAGES" -eq 1 ]] && log "Would install Homebrew packages: ${BREW_PACKAGES[*]}"
+    [[ "$INSTALL_CASKS" -eq 1 ]] && log "Would install Homebrew casks: ${BREW_CASKS[*]}"
+    [[ "$INSTALL_AI" -eq 1 ]] && log "Would install Claude Code and Codex CLI via npm"
+    [[ "$INSTALL_CUSTOMIZATION" -eq 1 ]] && log "Would apply macOS defaults and install the ll wrapper"
+    exit 0
+fi
 
 log "=============================================================================="
 log " MACOS AI DEV BOOTSTRAP"

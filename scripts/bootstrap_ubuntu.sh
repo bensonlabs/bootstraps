@@ -17,8 +17,17 @@ INSTALL_GITHUB_CLI=1
 INSTALL_FLATPAKS=1
 INSTALL_DESKTOP=1
 INSTALL_AI=1
+DRY_RUN=0
 
-if [[ "${1:-}" == "--all" ]]; then INTERACTIVE=0; fi
+for arg in "$@"; do
+    case "$arg" in
+        --all) INTERACTIVE=0 ;;
+        --dry-run) DRY_RUN=1 ;;
+    esac
+done
+if [[ "$DRY_RUN" -eq 1 ]]; then
+    BOOTSTRAP_LOG="${TMPDIR:-/tmp}/bootstrap_ubuntu_dry_run_$(date +%Y%m%d_%H%M%S).log"
+fi
 
 BASE_PACKAGES=(
     apt-transport-https
@@ -476,6 +485,21 @@ finish() {
 trap finish EXIT
 
 select_components
+
+if [[ "$DRY_RUN" -eq 1 ]]; then
+    log "DRY RUN: no system changes will be made."
+    log "Selected components:"
+    for choice in {1..6}; do
+        component_selected "$choice" && log "  - $(component_name "$choice")"
+    done
+    [[ "$INSTALL_CORE" -eq 1 ]] && log "Would install Ubuntu base packages: ${BASE_PACKAGES[*]}"
+    [[ "$INSTALL_VSCODE" -eq 1 ]] && log "Would configure and install VS Code from the Microsoft APT repository"
+    [[ "$INSTALL_GITHUB_CLI" -eq 1 ]] && log "Would configure and install GitHub CLI from its APT repository"
+    [[ "$INSTALL_FLATPAKS" -eq 1 ]] && log "Would install Flatpaks: ${FLATPAK_APPS[*]}"
+    [[ "$INSTALL_DESKTOP" -eq 1 ]] && log "Would install desktop utilities"
+    [[ "$INSTALL_AI" -eq 1 ]] && log "Would install Claude Code, Codex CLI, and one-file-context via npm"
+    exit 0
+fi
 
 log "=============================================================================="
 log " UBUNTU AI DEV BOOTSTRAP (NO-SNAP)"
