@@ -75,6 +75,7 @@ def main() -> int:
     report = {
         "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
         "platform": platform.platform(),
+        "architecture": platform.machine(),
         "profile": args.profile,
         "workstation_spec_version": spec_version(text),
         "status": overall,

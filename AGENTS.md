@@ -8,6 +8,8 @@ This repository provisions personal development workstations. Favor reliability,
 - `workstation.yaml` describes desired state. It is not an executable package manager.
 - Do not introduce a cross-platform provisioning framework without explicit approval.
 - Keep platform-specific package names, repositories, workarounds, and reboot behavior in platform scripts.
+- Treat CPU architecture as an explicit compatibility dimension. Do not infer support from emulation or package availability.
+- Supported architecture combinations are release requirements; experimental combinations must not block releases; legacy combinations are best effort.
 - Installation and verification are separate concerns.
 - New installable components require a verification command or an explicit reason why verification is impossible.
 - Bootstrap operations should be idempotent whenever practical.
