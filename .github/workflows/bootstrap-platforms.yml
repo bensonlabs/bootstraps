@@ -1,0 +1,78 @@
+name: Bootstrap platform validation
+
+on:
+  push:
+    paths:
+      - 'scripts/bootstrap_ubuntu.sh'
+      - 'scripts/bootstrap_macOS.sh'
+      - 'scripts/bootstrap_windows.ps1'
+      - 'tests/ubuntu/**'
+      - 'tests/macos/**'
+      - 'tests/windows/**'
+      - '.github/workflows/bootstrap-platforms.yml'
+  pull_request:
+    paths:
+      - 'scripts/bootstrap_ubuntu.sh'
+      - 'scripts/bootstrap_macOS.sh'
+      - 'scripts/bootstrap_windows.ps1'
+      - 'tests/ubuntu/**'
+      - 'tests/macos/**'
+      - 'tests/windows/**'
+      - '.github/workflows/bootstrap-platforms.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-ubuntu:
+    name: Validate Ubuntu bootstrap
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ShellCheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Validate Ubuntu script
+        run: |
+          bash -n scripts/bootstrap_ubuntu.sh
+          shellcheck scripts/bootstrap_ubuntu.sh
+          tests/ubuntu/test_bootstrap.sh
+
+  validate-macos:
+    name: Validate macOS bootstrap
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ShellCheck
+        run: brew install shellcheck
+      - name: Validate macOS script
+        run: |
+          bash -n scripts/bootstrap_macOS.sh
+          shellcheck scripts/bootstrap_macOS.sh
+          tests/macos/test_bootstrap.sh
+
+  validate-windows:
+    name: Validate Windows bootstrap
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse PowerShell script
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'scripts/bootstrap_windows.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+      - name: Validate Windows script contract
+        shell: pwsh
+        run: tests/windows/test_bootstrap.ps1
