@@ -24,6 +24,9 @@ param(
     # How many bootstrap logs to retain in the user profile.
     [ValidateRange(1, 100)]
     [int]$KeepLogs = 5
+
+    # Skip the interactive component checklist.
+    [switch]$All
 )
 
 $ErrorActionPreference = 'Stop'
@@ -40,6 +43,10 @@ $PythonShortVersion = $PythonVersion -replace "\.", ""
 $SysinternalsPath = "$env:ProgramFiles\Sysinternals"
 $FatalError = $false
 $WslStageRegistered = $false
+$InstallCore = $true
+$InstallContainers = $true
+$InstallAi = $true
+$InstallWsl = -not $SkipWsl
 
 # Resolve the Desktop through the shell API rather than assuming
 # "$env:USERPROFILE\Desktop". With OneDrive Known Folder Move enabled the real
@@ -264,6 +271,44 @@ function Test-WingetAvailable {
     return Test-CommandExists "winget"
 }
 
+function Select-Components {
+    if ($All -or [Console]::IsInputRedirected) { return }
+
+    while ($true) {
+        Clear-Host
+        Write-Host "Windows workstation bootstrap"
+        Write-Host "Toggle item(s) by number. Press Enter when finished."
+        Write-Host ""
+        $items = @(
+            @{ Number = 1; Name = 'Core applications and developer tools'; Key = 'InstallCore' },
+            @{ Number = 2; Name = 'Docker Desktop and virtualization'; Key = 'InstallContainers' },
+            @{ Number = 3; Name = 'AI CLI tools'; Key = 'InstallAi' },
+            @{ Number = 4; Name = 'WSL2 Ubuntu provisioner'; Key = 'InstallWsl' }
+        )
+        foreach ($item in $items) {
+            $mark = if ((Get-Variable -Name $item.Key -ValueOnly)) { 'x' } else { ' ' }
+            Write-Host "[$mark] $($item.Number)) $($item.Name)"
+        }
+        Write-Host ""
+        $choices = Read-Host "Toggle item(s), or press Enter to continue"
+        if ([string]::IsNullOrWhiteSpace($choices)) { break }
+        foreach ($choice in ($choices -split '\s+')) {
+            $item = $items | Where-Object Number -eq $choice
+            if ($null -ne $item) {
+                Set-Variable -Scope 1 -Name $item.Key -Value (-not (Get-Variable -Name $item.Key -ValueOnly))
+            }
+        }
+    }
+
+    $selected = @()
+    if ($InstallCore) { $selected += 'Core applications and developer tools' }
+    if ($InstallContainers) { $selected += 'Docker Desktop and virtualization' }
+    if ($InstallAi) { $selected += 'AI CLI tools' }
+    if ($InstallWsl) { $selected += 'WSL2 Ubuntu provisioner' }
+    Write-Host "Selected: $($selected -join ', ')"
+    if ((Read-Host 'Proceed with installation? [y/N]') -notmatch '^[Yy]$') { exit 0 }
+}
+
 function Invoke-PreflightChecks {
     if (-not (Test-AdminSession)) {
         Set-Fatal "This script must be run from an elevated PowerShell session"
@@ -327,6 +372,7 @@ Write-Log " Mode: NoReboot=$NoReboot SkipWsl=$SkipWsl KeepLogs=$KeepLogs"
 Write-Log ("=" * 78)
 
 Print-Stage "STAGE 0: PACKAGE MANAGER PREFLIGHT"
+Select-Components
 if (-not (Invoke-PreflightChecks)) {
     Print-Summary
     exit 1
@@ -346,6 +392,7 @@ Invoke-OptionalStep "Trust PSGallery repository" {
 }
 
 Print-Stage "STAGE 1: WINDOWS ENVIRONMENT PROVISIONING"
+if ($InstallCore) {
 
 # PowerShell 7 is installed from the official MSI rather than winget. winget
 # correlates the Store (MSIX) build with the MSI build under the same package
@@ -440,6 +487,8 @@ if ((git config --global user.email 2>$null) -eq "jbenson.dev@gmail.com") {
     Invoke-OptionalStep "Configure git user.email" { git config --global user.email "jbenson.dev@gmail.com" }
 }
 
+}
+
 Invoke-OptionalStep "Register Python app path" {
     # Written without the null-conditional operator (?.) so the script still
     # parses under Windows PowerShell 5.1. A parse error there aborts the whole
@@ -458,6 +507,7 @@ Invoke-OptionalStep "Register Python app path" {
 }
 
 Print-Stage "STAGE 2: CONTAINERIZATION & VIRTUALIZATION"
+if ($InstallContainers) {
 Invoke-OptionalStep "Enable WSL2" { wsl --install --no-launch }
 Invoke-WingetInstall "Docker Desktop" "Docker.DockerDesktop"
 
@@ -489,24 +539,14 @@ if (Get-Process -Name "Docker Desktop" -ErrorAction SilentlyContinue) {
         }
     }
 }
+}
 
 Print-Stage "STAGE 3: WINDOWS AI CLI TOOLS"
+if ($InstallAi) {
 Install-NpmCliIfMissing "Claude Code" "claude" "@anthropic-ai/claude-code" { npm install -g @anthropic-ai/claude-code }
 Install-NpmCliIfMissing "Codex CLI" "codex" "@openai/codex" { npm install -g @openai/codex }
-Invoke-WingetInstall "Google Antigravity" "Google.Antigravity"
-if (Test-CommandExists "agy") {
-    Record-Success "Google Antigravity CLI already installed"
-} else {
-    Invoke-OptionalStep "Install Google Antigravity CLI" {
-        $script = Invoke-RestMethod -Uri "https://antigravity.google/cli/install.ps1"
-        if ([string]::IsNullOrWhiteSpace($script)) {
-            throw "Downloaded install script is empty; aborting execution"
-        }
-        Invoke-Expression $script
-    }
-    Refresh-Path
-}
 Install-NpmCliIfMissing "GitHub Copilot CLI" "copilot" "@github/copilot" { npm install -g @github/copilot }
+}
 
 Print-Stage "STAGE 4: WINDOWS STACK VERIFICATION"
 Write-Log "--- CORE TOOLS ---"
@@ -525,11 +565,10 @@ Write-Log "--- AI TOOLS ---"
 Invoke-OptionalStep "Check Claude Code version" { claude --version }
 Invoke-OptionalStep "Check Codex CLI version" { codex --version }
 Invoke-OptionalStep "Check GitHub Copilot CLI version" { copilot --version }
-Invoke-OptionalStep "Check Google Antigravity CLI version" { agy --version }
 Write-Log "------------------------------------------------"
 Write-Log "Windows bootstrap stage complete."
 
-if ($SkipWsl) {
+if ($SkipWsl -or -not $InstallWsl) {
     Print-Stage "STAGE 5: SKIPPED (-SkipWsl)"
     Record-Success "Skipped WSL provisioner generation and RunOnce registration"
 } else {
