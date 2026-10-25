@@ -10,6 +10,15 @@ SUCCESSES=()
 DESKTOP_ENV="${XDG_CURRENT_DESKTOP:-unknown}"
 SKIP_FLATPAK_INSTALLS=0
 FATAL_ERROR=0
+INTERACTIVE=1
+INSTALL_CORE=1
+INSTALL_VSCODE=1
+INSTALL_GITHUB_CLI=1
+INSTALL_FLATPAKS=1
+INSTALL_DESKTOP=1
+INSTALL_AI=1
+
+if [[ "${1:-}" == "--all" ]]; then INTERACTIVE=0; fi
 
 BASE_PACKAGES=(
     apt-transport-https
@@ -25,6 +34,8 @@ BASE_PACKAGES=(
     python3-pip
     fastfetch
     flatpak
+    snapper
+    btrfs-progs
     zstd
     lsb-release
     ripgrep
@@ -44,11 +55,8 @@ AI_CLI_CHECKS=(
     "Claude Code:claude --version"
     "Codex CLI:codex --version"
     "GitHub Copilot CLI:copilot --version"
-    "Google Antigravity CLI:agy --version"
     "one-file-context:one-file-context --help"
     "Zed:zed --version"
-    "VS Code:code --version"
-    "GitHub CLI:gh --version"
     "Node.js:node --version"
     "npm:npm --version"
     "Python:python3 --version"
@@ -57,6 +65,57 @@ AI_CLI_CHECKS=(
     "fastfetch:fastfetch --version"
     "7zip:7z"
 )
+
+component_name() {
+    case "$1" in
+        1) echo "Core packages" ;;
+        2) echo "Visual Studio Code (APT)" ;;
+        3) echo "GitHub CLI (APT)" ;;
+        4) echo "Flatpak applications" ;;
+        5) echo "Desktop utilities" ;;
+        6) echo "AI CLI tools" ;;
+    esac
+}
+
+component_selected() {
+    case "$1" in
+        1) [[ "$INSTALL_CORE" -eq 1 ]] ;; 2) [[ "$INSTALL_VSCODE" -eq 1 ]] ;;
+        3) [[ "$INSTALL_GITHUB_CLI" -eq 1 ]] ;; 4) [[ "$INSTALL_FLATPAKS" -eq 1 ]] ;;
+        5) [[ "$INSTALL_DESKTOP" -eq 1 ]] ;; 6) [[ "$INSTALL_AI" -eq 1 ]] ;;
+    esac
+}
+
+toggle_component() {
+    case "$1" in
+        1) INSTALL_CORE=$((1 - INSTALL_CORE)) ;; 2) INSTALL_VSCODE=$((1 - INSTALL_VSCODE)) ;;
+        3) INSTALL_GITHUB_CLI=$((1 - INSTALL_GITHUB_CLI)) ;; 4) INSTALL_FLATPAKS=$((1 - INSTALL_FLATPAKS)) ;;
+        5) INSTALL_DESKTOP=$((1 - INSTALL_DESKTOP)) ;; 6) INSTALL_AI=$((1 - INSTALL_AI)) ;;
+    esac
+}
+
+select_components() {
+    local choice mark choices confirmation
+    if [[ "$INTERACTIVE" -eq 0 || ! -t 0 ]]; then return 0; fi
+    while true; do
+        clear
+        echo "Ubuntu workstation bootstrap"
+        echo "Toggle item(s) by number. Press Enter when finished."
+        echo
+        for choice in {1..6}; do
+            if component_selected "$choice"; then mark="x"; else mark=" "; fi
+            printf '[%s] %s) %s\n' "$mark" "$choice" "$(component_name "$choice")"
+        done
+        echo
+        read -r -p "Toggle item(s), or press Enter to continue: " choices
+        [[ -z "$choices" ]] && break
+        for choice in $choices; do
+            [[ "$choice" =~ ^[1-6]$ ]] && toggle_component "$choice"
+        done
+    done
+    echo
+    read -r -p "Proceed with installation? [y/N] " confirmation
+    [[ "$confirmation" =~ ^[Yy]$ ]] || exit 0
+}
 
 log() {
     echo "$*" | tee -a "$BOOTSTRAP_LOG"
@@ -145,6 +204,49 @@ check_apt_health() {
     record_success "APT health preflight passed"
 }
 
+ensure_sudo_session() {
+    if sudo -v >> "$BOOTSTRAP_LOG" 2>&1; then
+        record_success "Cached sudo credentials"
+    else
+        fatal "Unable to obtain sudo credentials"
+        return 1
+    fi
+}
+
+check_platform() {
+    if [[ ! -r /etc/lsb-release ]] || ! grep -q 'DISTRIB_ID=Ubuntu' /etc/lsb-release; then
+        fatal "This script supports Ubuntu only"
+        return 1
+    fi
+    if [[ "$(dpkg --print-architecture)" != "amd64" ]]; then
+        fatal "This script currently supports amd64 Ubuntu only"
+        return 1
+    fi
+}
+
+create_pre_bootstrap_snapshot() {
+    local filesystem
+    filesystem="$(findmnt -n -o FSTYPE / 2>/dev/null || true)"
+    if [[ "$filesystem" != "btrfs" ]]; then
+        warn "Root filesystem is '$filesystem', not Btrfs; skipping Snapper snapshot"
+        return 0
+    fi
+    if ! command -v snapper >/dev/null 2>&1; then
+        run_optional_step "Install Snapper for rollback protection" sudo apt-get install -y snapper
+    fi
+    if ! command -v snapper >/dev/null 2>&1; then
+        fatal "Snapper is unavailable on a Btrfs root; refusing to continue without a pre-bootstrap snapshot"
+        return 1
+    fi
+    if ! sudo snapper list-configs 2>/dev/null | awk 'NR > 1 && $1 == "root" { found = 1 } END { exit !found }'; then
+        if ! sudo snapper -c root create-config / 2>&1 | tee -a "$BOOTSTRAP_LOG"; then
+            fatal "Unable to create the Snapper root configuration"
+            return 1
+        fi
+    fi
+    run_step "Create pre-bootstrap Snapper snapshot" sudo snapper -c root create --description "Before Ubuntu bootstrap $(date +%Y-%m-%d_%H-%M-%S)"
+}
+
 configure_github_cli_repo() {
     if [[ -f /etc/apt/sources.list.d/github-cli.list ]]; then
         record_success "GitHub CLI APT source already present"
@@ -201,6 +303,10 @@ install_github_cli() {
 
 install_flatpaks() {
     local app
+
+    if ! command -v flatpak >/dev/null 2>&1; then
+        run_step "Install Flatpak runtime" sudo apt-get install -y flatpak || return 1
+    fi
 
     if ! sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo >> "$BOOTSTRAP_LOG" 2>&1; then
         warn "Failed to add Flathub remote; skipping Flatpak app installs"
@@ -370,6 +476,8 @@ finish() {
 
 trap finish EXIT
 
+select_components
+
 log "=============================================================================="
 log " UBUNTU AI DEV BOOTSTRAP (NO-SNAP)"
 log " Log file: $BOOTSTRAP_LOG"
@@ -377,7 +485,10 @@ log " Detected desktop: $DESKTOP_ENV"
 log "=============================================================================="
 
 print_stage "STAGE 0: PACKAGE MANAGER PREFLIGHT"
+check_platform || exit 1
+ensure_sudo_session || exit 1
 check_apt_health || exit 1
+create_pre_bootstrap_snapshot || exit 1
 
 print_stage "STAGE 1: SYSTEM UPDATES & OPTIMIZATIONS"
 sudo tee /etc/apt/apt.conf.d/99parallel-downloads << 'EOF' >> "$BOOTSTRAP_LOG"
@@ -386,27 +497,32 @@ Binary::apt::APT::Keep-Downloaded-Packages "true";
 EOF
 record_success "Configured APT download settings"
 run_step "APT dist-upgrade" sudo apt-get dist-upgrade -y || exit 1
-run_step "Base package install" sudo apt-get install -y "${BASE_PACKAGES[@]}" || exit 1
+if [[ "$INSTALL_CORE" -eq 1 ]]; then
+    run_step "Base package install" sudo apt-get install -y "${BASE_PACKAGES[@]}" || exit 1
+else
+    log "Skipping core package installation"
+fi
 run_optional_step "Git config core.fscache" git config --global core.fscache true
 run_optional_step "Git config core.preloadindex" git config --global core.preloadindex true
 run_optional_step "Git config gc.auto" git config --global gc.auto 256
 
 print_stage "STAGE 2: APPLICATION RUNTIMES & REPOSITORIES"
-install_github_cli || exit 1
-install_vscode || exit 1
-install_flatpaks
-install_desktop_packages
+if [[ "$INSTALL_GITHUB_CLI" -eq 1 ]]; then install_github_cli || exit 1; fi
+if [[ "$INSTALL_VSCODE" -eq 1 ]]; then install_vscode || exit 1; fi
+if [[ "$INSTALL_FLATPAKS" -eq 1 ]]; then install_flatpaks; fi
+if [[ "$INSTALL_DESKTOP" -eq 1 ]]; then install_desktop_packages; fi
 check_snap_state
 
 print_stage "STAGE 3: CLOUD AI CLI TOOLING"
-install_nodejs
-ensure_npm_global_path || exit 1
-install_shell_cli "Claude Code" "npm install -g @anthropic-ai/claude-code" claude
-install_shell_cli "Codex CLI" "npm install -g @openai/codex" codex
-install_shell_cli "Google Antigravity CLI" "curl -fsSL https://antigravity.google/cli/install.sh | bash" agy
-install_shell_cli "GitHub Copilot CLI" "curl -fsSL https://gh.io/copilot-install | bash" copilot
-install_shell_cli "Zed IDE" "curl -fsSL https://zed.dev/install.sh | sh" zed
-install_shell_cli "one-file-context" "npm install -g one-file-context" one-file-context
+if [[ "$INSTALL_AI" -eq 1 ]]; then
+    install_nodejs
+    ensure_npm_global_path || exit 1
+    install_shell_cli "Claude Code" "npm install -g @anthropic-ai/claude-code" claude
+    install_shell_cli "Codex CLI" "npm install -g @openai/codex" codex
+    install_shell_cli "GitHub Copilot CLI" "curl -fsSL https://gh.io/copilot-install | bash" copilot
+    install_shell_cli "Zed IDE" "curl -fsSL https://zed.dev/install.sh | sh" zed
+    install_shell_cli "one-file-context" "npm install -g one-file-context" one-file-context
+fi
 
 print_stage "STAGE 4: SYSTEM PRODUCTION VERIFICATION"
 log "--- VERIFYING UBUNTU WORKSTATION ENGINE STACK ---"
@@ -420,10 +536,10 @@ log "--- NPM GLOBALS ---"
 run_optional_pipe_step "List global npm packages" "npm list -g --depth=0"
 log ""
 log "--- AI TOOLING ---"
-verify_ai_clis
+if [[ "$INSTALL_AI" -eq 1 ]]; then verify_ai_clis; else log "AI CLI verification skipped"; fi
 log ""
 log "--- FLATPAKS ---"
-verify_flatpaks
+if [[ "$INSTALL_FLATPAKS" -eq 1 ]]; then verify_flatpaks; else log "Flatpak verification skipped"; fi
 log "------------------------------------------------"
 log "Bootstrap complete!"
 log ""
