@@ -12,6 +12,14 @@ SUCCESSES=()
 ARCH="$(uname -m)"
 MACOS_MAJOR_VERSION="$(sw_vers -productVersion | cut -d. -f1)"
 FATAL_ERROR=0
+INTERACTIVE=1
+INSTALL_BREW_PACKAGES=1
+INSTALL_CASKS=1
+INSTALL_AI=1
+INSTALL_CUSTOMIZATION=1
+REQUIRED_MACOS_MAJOR_VERSION=27
+
+if [[ "${1:-}" == "--all" ]]; then INTERACTIVE=0; fi
 BREW_PKG_URL="https://github.com/Homebrew/brew/releases/latest/download/Homebrew.pkg"
 BREW_PKG_PATH="/tmp/Homebrew.pkg"
 
@@ -45,7 +53,6 @@ BREW_CASKS=(
 AI_CLI_CHECKS=(
     "Claude Code:claude --version"
     "Codex CLI:codex --version"
-    "GitHub CLI:gh --version"
     "Node.js:node --version"
     "npm:npm --version"
     "Python:python3 --version"
@@ -54,6 +61,49 @@ AI_CLI_CHECKS=(
     "fastfetch:fastfetch --version"
     "7zip:7zz"
 )
+
+component_name() {
+    case "$1" in
+        1) echo "Homebrew CLI packages" ;; 2) echo "GUI applications" ;;
+        3) echo "AI CLI tools" ;; 4) echo "macOS customizations" ;;
+    esac
+}
+
+component_selected() {
+    case "$1" in
+        1) [[ "$INSTALL_BREW_PACKAGES" -eq 1 ]] ;; 2) [[ "$INSTALL_CASKS" -eq 1 ]] ;;
+        3) [[ "$INSTALL_AI" -eq 1 ]] ;; 4) [[ "$INSTALL_CUSTOMIZATION" -eq 1 ]] ;;
+    esac
+}
+
+toggle_component() {
+    case "$1" in
+        1) INSTALL_BREW_PACKAGES=$((1 - INSTALL_BREW_PACKAGES)) ;; 2) INSTALL_CASKS=$((1 - INSTALL_CASKS)) ;;
+        3) INSTALL_AI=$((1 - INSTALL_AI)) ;; 4) INSTALL_CUSTOMIZATION=$((1 - INSTALL_CUSTOMIZATION)) ;;
+    esac
+}
+
+select_components() {
+    local choice mark choices confirmation
+    if [[ "$INTERACTIVE" -eq 0 || ! -t 0 ]]; then return 0; fi
+    while true; do
+        clear
+        echo "macOS workstation bootstrap"
+        echo "Toggle item(s) by number. Press Enter when finished."
+        echo
+        for choice in {1..4}; do
+            if component_selected "$choice"; then mark="x"; else mark=" "; fi
+            printf '[%s] %s) %s\n' "$mark" "$choice" "$(component_name "$choice")"
+        done
+        echo
+        read -r -p "Toggle item(s), or press Enter to continue: " choices
+        [[ -z "$choices" ]] && break
+        for choice in $choices; do [[ "$choice" =~ ^[1-4]$ ]] && toggle_component "$choice"; done
+    done
+    echo
+    read -r -p "Proceed with installation? [y/N] " confirmation
+    [[ "$confirmation" =~ ^[Yy]$ ]] || exit 0
+}
 
 log() {
     echo "$*" | tee -a "$BOOTSTRAP_LOG"
@@ -123,6 +173,17 @@ ensure_sudo_session() {
         record_success "Cached sudo credentials"
     else
         fatal "Unable to obtain sudo credentials"
+        return 1
+    fi
+}
+
+check_platform() {
+    if [[ "$(uname -s)" != "Darwin" ]]; then
+        fatal "This script supports macOS only"
+        return 1
+    fi
+    if [[ "$MACOS_MAJOR_VERSION" -lt "$REQUIRED_MACOS_MAJOR_VERSION" ]]; then
+        fatal "macOS $REQUIRED_MACOS_MAJOR_VERSION or newer is required; detected macOS $MACOS_MAJOR_VERSION"
         return 1
     fi
 }
@@ -253,14 +314,6 @@ verify_github_copilot_cli() {
     fi
 }
 
-verify_agy_cli() {
-    if command -v agy >/dev/null 2>&1; then
-        record_success "Verified Google Antigravity CLI command is present"
-    else
-        warn "Google Antigravity CLI command not found in PATH; continuing"
-    fi
-}
-
 create_ll_wrapper() {
     if ! command -v gls >/dev/null 2>&1; then
         warn "gls not available; skipping ll wrapper creation"
@@ -366,6 +419,8 @@ finish() {
 
 trap finish EXIT
 
+select_components
+
 log "=============================================================================="
 log " MACOS AI DEV BOOTSTRAP"
 log " Log file: $BOOTSTRAP_LOG"
@@ -374,6 +429,7 @@ log " macOS major version: $MACOS_MAJOR_VERSION"
 log "=============================================================================="
 
 print_stage "STAGE 0: PACKAGE MANAGER PREFLIGHT"
+check_platform || exit 1
 ensure_sudo_session || exit 1
 ensure_xcode_clt || exit 1
 ensure_homebrew || exit 1
@@ -383,19 +439,22 @@ print_stage "STAGE 1: HOMEBREW SETUP"
 run_optional_step "Update Homebrew" brew update
 
 print_stage "STAGE 2: CORE CLI TOOLS"
-install_brew_packages
-ensure_npm_global_path || exit 1
-install_shell_cli "Claude Code" "npm install -g @anthropic-ai/claude-code" claude
-install_shell_cli "Codex CLI" "npm install -g @openai/codex" codex
-install_shell_cli "Google Antigravity CLI" "curl -fsSL https://antigravity.google/cli/install.sh | bash" agy
-install_shell_cli "GitHub Copilot CLI" "PREFIX=$HOME/.npm-global bash -c 'curl -fsSL https://gh.io/copilot-install | bash'" copilot
+if [[ "$INSTALL_BREW_PACKAGES" -eq 1 ]]; then install_brew_packages; fi
+if [[ "$INSTALL_AI" -eq 1 ]]; then
+    ensure_npm_global_path || exit 1
+    install_shell_cli "Claude Code" "npm install -g @anthropic-ai/claude-code" claude
+    install_shell_cli "Codex CLI" "npm install -g @openai/codex" codex
+    install_shell_cli "GitHub Copilot CLI" "PREFIX=$HOME/.npm-global bash -c 'curl -fsSL https://gh.io/copilot-install | bash'" copilot
+fi
 
 print_stage "STAGE 3: GUI APPLICATIONS"
-install_brew_casks
+if [[ "$INSTALL_CASKS" -eq 1 ]]; then install_brew_casks; fi
 
 print_stage "STAGE 4: SYSTEM CUSTOMIZATION"
-create_ll_wrapper
-configure_macos_defaults
+if [[ "$INSTALL_CUSTOMIZATION" -eq 1 ]]; then
+    create_ll_wrapper
+    configure_macos_defaults
+fi
 
 print_stage "STAGE 5: SYSTEM PRODUCTION VERIFICATION"
 run_optional_step "Check Homebrew version" brew --version
@@ -405,12 +464,15 @@ log "--- NPM GLOBALS ---"
 run_optional_pipe_step "List global npm packages" "npm list -g --depth=0"
 log ""
 log "--- AI TOOLING ---"
-verify_ai_clis
-verify_github_copilot_cli
-verify_agy_cli
+if [[ "$INSTALL_AI" -eq 1 ]]; then
+    verify_ai_clis
+    verify_github_copilot_cli
+else
+    log "AI CLI verification skipped"
+fi
 log ""
 log "--- HOMEBREW PACKAGES ---"
-verify_brew_apps
+if [[ "$INSTALL_BREW_PACKAGES" -eq 1 || "$INSTALL_CASKS" -eq 1 ]]; then verify_brew_apps; else log "Homebrew application verification skipped"; fi
 log "------------------------------------------------"
 log "Bootstrap complete!"
 log ""
