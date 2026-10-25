@@ -1,6 +1,10 @@
 ```powershell
 # Scratch notes of things I've learned
 
+# Historical notes from earlier Windows setup iterations. The maintained entry
+# point is scripts/bootstrap_windows.ps1; verify commands here against it before
+# using them on a new machine.
+
 Set-ExecutionPolicy RemoteSigned -Scope Process -Force
 
 # Base system

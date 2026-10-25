@@ -432,6 +432,7 @@ if [[ "$DRY_RUN" -eq 1 ]]; then
     [[ "$INSTALL_CASKS" -eq 1 ]] && log "Would install Homebrew casks: ${BREW_CASKS[*]}"
     [[ "$INSTALL_AI" -eq 1 ]] && log "Would install Claude Code and Codex CLI via npm"
     [[ "$INSTALL_CUSTOMIZATION" -eq 1 ]] && log "Would apply macOS defaults and install the ll wrapper"
+    log "Would install or update Homebrew and may write /usr/local/bin/ll and ~/.zshrc"
     exit 0
 fi
 

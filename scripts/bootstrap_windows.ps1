@@ -388,6 +388,8 @@ if ($DryRun) {
     if ($InstallContainers) { Write-Log "  - Docker Desktop and virtualization" }
     if ($InstallAi) { Write-Log "  - AI CLI tools" }
     if ($InstallWsl) { Write-Log "  - WSL2 Ubuntu provisioner" }
+    if ($InstallWsl) { Write-Log "Would generate a WSL script and register a RunOnce entry for the next sign-in" }
+    Write-Log "Would modify installed applications, selected Git settings, and possibly Docker settings.json"
     Write-Log "Would install or configure the selected Windows components."
     exit 0
 }

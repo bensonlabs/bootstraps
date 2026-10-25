@@ -2,6 +2,10 @@
 
 Documentation and configuration for AI-assisted development tools.
 
+The current main bootstrap scripts install Claude Code and Codex CLI. Gemini CLI
+is retained here as a reference item and is not installed by the main Fedora,
+Ubuntu, macOS, or Windows bootstrap paths.
+
 The purpose of this directory is to document installation, configuration, authentication, workflows, and lessons learned for each AI platform.
 
 ## Supported Tools

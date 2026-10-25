@@ -1,6 +1,9 @@
 
 ```powershell
 # ==============================================================================
+# Historical v1 install-order reference. The maintained Windows bootstrap is
+# scripts/bootstrap_windows.ps1; this document is not the source of truth.
+
 # UNATTENDED DEVELOPMENT ENVIRONMENT SETUP SCRIPT
 # ==============================================================================
 

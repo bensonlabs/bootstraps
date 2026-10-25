@@ -289,8 +289,6 @@ EOF" || return 1
 }
 
 install_vscode() {
-    configure_vscode_repo || return 1
-    run_step "APT update after adding VS Code repo" sudo apt-get update || return 1
     if command -v code >/dev/null 2>&1; then
         record_success "Visual Studio Code already installed"
     else
@@ -299,8 +297,6 @@ install_vscode() {
 }
 
 install_github_cli() {
-    configure_github_cli_repo || return 1
-    run_step "APT update after adding GitHub CLI repo" sudo apt-get update || return 1
     if command -v gh >/dev/null 2>&1; then
         record_success "GitHub CLI already installed"
     else
@@ -495,6 +491,9 @@ if [[ "$DRY_RUN" -eq 1 ]]; then
     [[ "$INSTALL_CORE" -eq 1 ]] && log "Would install Ubuntu base packages: ${BASE_PACKAGES[*]}"
     [[ "$INSTALL_VSCODE" -eq 1 ]] && log "Would configure and install VS Code from the Microsoft APT repository"
     [[ "$INSTALL_GITHUB_CLI" -eq 1 ]] && log "Would configure and install GitHub CLI from its APT repository"
+    [[ "$INSTALL_VSCODE" -eq 1 ]] && log "Would write /etc/apt/sources.list.d/vscode.list, /etc/apt/keyrings/packages.microsoft.gpg, and the VS Code APT pin"
+    [[ "$INSTALL_GITHUB_CLI" -eq 1 ]] && log "Would write /etc/apt/sources.list.d/github-cli.list and its keyring"
+    log "Would write /etc/apt/apt.conf.d/99parallel-downloads and create a pre-bootstrap snapshot when supported"
     [[ "$INSTALL_FLATPAKS" -eq 1 ]] && log "Would install Flatpaks: ${FLATPAK_APPS[*]}"
     [[ "$INSTALL_DESKTOP" -eq 1 ]] && log "Would install desktop utilities"
     [[ "$INSTALL_AI" -eq 1 ]] && log "Would install Claude Code, Codex CLI, and one-file-context via npm"
@@ -530,6 +529,12 @@ run_optional_step "Git config core.preloadindex" git config --global core.preloa
 run_optional_step "Git config gc.auto" git config --global gc.auto 256
 
 print_stage "STAGE 2: APPLICATION RUNTIMES & REPOSITORIES"
+REPOSITORIES_CHANGED=0
+if [[ "$INSTALL_GITHUB_CLI" -eq 1 ]]; then configure_github_cli_repo || exit 1; REPOSITORIES_CHANGED=1; fi
+if [[ "$INSTALL_VSCODE" -eq 1 ]]; then configure_vscode_repo || exit 1; REPOSITORIES_CHANGED=1; fi
+if [[ "$REPOSITORIES_CHANGED" -eq 1 ]]; then
+    run_step "APT update after configuring third-party repositories" sudo apt-get update || exit 1
+fi
 if [[ "$INSTALL_GITHUB_CLI" -eq 1 ]]; then install_github_cli || exit 1; fi
 if [[ "$INSTALL_VSCODE" -eq 1 ]]; then install_vscode || exit 1; fi
 if [[ "$INSTALL_FLATPAKS" -eq 1 ]]; then install_flatpaks; fi
