@@ -1,0 +1,39 @@
+name: Fedora bootstrap validation
+
+on:
+  push:
+    paths:
+      - 'scripts/bootstrap_fedora.sh'
+      - 'tests/fedora/**'
+      - '.github/workflows/bootstrap-fedora.yml'
+  pull_request:
+    paths:
+      - 'scripts/bootstrap_fedora.sh'
+      - 'tests/fedora/**'
+      - '.github/workflows/bootstrap-fedora.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-fedora-bootstrap:
+    name: Validate Fedora bootstrap
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate in Fedora container
+        run: |
+          docker run --rm \
+            --volume "$PWD:/repo:ro" \
+            --workdir /repo \
+            fedora:latest \
+            bash -euxo pipefail -c '
+              dnf5 install -y ShellCheck bash grep
+              bash -n scripts/bootstrap_fedora.sh
+              shellcheck scripts/bootstrap_fedora.sh
+              tests/fedora/test_bootstrap.sh
+            '
