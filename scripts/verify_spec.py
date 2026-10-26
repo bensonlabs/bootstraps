@@ -41,12 +41,12 @@ expected_architecture_contracts = (
 )
 for platform, architecture, status in expected_architecture_contracts:
     platform_block = re.search(
-        rf"^  {platform}:\\s*$([\\s\\S]*?)(?=^  [a-z]+:\\s*$|^profiles:)",
+        rf"^  {platform}:\s*$([\s\S]*?)(?=^  [a-z]+:\s*$|^profiles:)",
         text,
         re.MULTILINE,
     )
     if not platform_block or not re.search(
-        rf"^      {architecture}:\\s*{status}\\s*$",
+        rf"^      {architecture}:\s*{status}\s*$",
         platform_block.group(1),
         re.MULTILINE,
     ):
