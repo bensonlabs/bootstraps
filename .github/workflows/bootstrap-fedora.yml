@@ -5,11 +5,13 @@ on:
     paths:
       - 'scripts/bootstrap_fedora.sh'
       - 'tests/fedora/**'
+      - 'tests/architecture/**'
       - '.github/workflows/bootstrap-fedora.yml'
   pull_request:
     paths:
       - 'scripts/bootstrap_fedora.sh'
       - 'tests/fedora/**'
+      - 'tests/architecture/**'
       - '.github/workflows/bootstrap-fedora.yml'
   workflow_dispatch:
 

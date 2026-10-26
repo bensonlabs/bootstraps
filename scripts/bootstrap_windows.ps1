@@ -38,6 +38,39 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Query the processor rather than the PowerShell process architecture, which may
+# describe an emulated x64/x86 process on ARM64 Windows.
+function Get-BootstrapArchitecture {
+    $processors = @(Get-CimInstance Win32_Processor -ErrorAction Stop)
+    $architectures = @($processors | Select-Object -ExpandProperty Architecture -Unique)
+    if ($architectures.Count -ne 1) { throw 'Unable to determine a single native CPU architecture.' }
+    switch ($architectures[0]) {
+        9 { return 'x86_64' }
+        12 { return 'arm64' }
+        default { throw "Unsupported Windows processor architecture: $($architectures[0]). See docs/platform-support.md." }
+    }
+}
+
+function Assert-BootstrapArchitecture {
+    param([string]$Architecture, [switch]$Preview)
+    switch ($Architecture) {
+        'x86_64' { return }
+        'arm64' {
+            Write-Warning 'windows/arm64 is experimental; installation is not supported by this bootstrap yet.'
+            if (-not $Preview) {
+                throw 'Use -DryRun to preview the plan; use a supported x86_64 machine for installation.'
+            }
+        }
+        default { throw "Unsupported Windows architecture: $Architecture. See docs/platform-support.md." }
+    }
+}
+
+# Fail before changing execution policy, creating logs, or selecting components.
+$Architecture = Get-BootstrapArchitecture
+Assert-BootstrapArchitecture -Architecture $Architecture -Preview:$DryRun
+Write-Host "Architecture: windows/$Architecture"
+
 Set-ExecutionPolicy RemoteSigned -Scope Process -Force
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 

@@ -28,6 +28,30 @@ for arg in "$@"; do
         --dry-run) DRY_RUN=1 ;;
     esac
 done
+# Run before logging, selection, or any installation steps.
+check_architecture() {
+    local detected
+    detected="$(uname -m)" || return 1
+    case "$detected" in
+        x86_64|amd64) ARCH=x86_64 ;;
+        arm64|aarch64)
+            ARCH=arm64
+            echo "WARN: fedora/arm64 is experimental; installation is not supported by this bootstrap yet." >&2
+            if [[ "$DRY_RUN" -ne 1 ]]; then
+                echo "ERROR: Use --dry-run to preview the plan; use a supported x86_64 machine for installation." >&2
+                return 1
+            fi
+            ;;
+        *)
+            echo "ERROR: Unsupported fedora architecture: $detected. See docs/platform-support.md." >&2
+            return 1
+            ;;
+    esac
+    echo "Architecture: fedora/$ARCH"
+}
+
+check_architecture || exit 1
+
 if [[ "$DRY_RUN" -eq 1 ]]; then
     BOOTSTRAP_LOG="${TMPDIR:-/tmp}/bootstrap_fedora_dry_run_$(date +%Y%m%d_%H%M%S).log"
 fi
@@ -253,11 +277,6 @@ check_dnf_health() {
 check_platform() {
     if [[ ! -r /etc/fedora-release ]] || ! grep -q '^Fedora' /etc/os-release; then
         fatal "This script supports Fedora only"
-        return 1
-    fi
-
-    if [[ "$(uname -m)" != "x86_64" ]]; then
-        fatal "This script currently supports x86_64 Fedora only"
         return 1
     fi
 

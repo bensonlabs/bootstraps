@@ -15,3 +15,5 @@ absent 'copilot'
 absent 'zed'
 
 echo "macOS bootstrap contract checks passed."
+
+bash tests/architecture/test_bootstrap.sh macos
