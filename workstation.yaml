@@ -1,5 +1,23 @@
 schema_version: 1
-workstation_spec_version: "1.0"
+workstation_spec_version: "1.1"
+
+platforms:
+  windows:
+    architectures:
+      x86_64: supported
+      arm64: experimental
+  fedora:
+    architectures:
+      x86_64: supported
+      arm64: experimental
+  ubuntu:
+    architectures:
+      x86_64: supported
+      arm64: experimental
+  macos:
+    architectures:
+      arm64: supported
+      x86_64: legacy
 
 profiles:
   core:
@@ -117,4 +135,4 @@ operations:
 report:
   format: json
   filename: machine-state.json
-  required_fields: [timestamp, platform, profile, workstation_spec_version, status, tools]
+  required_fields: [timestamp, platform, architecture, profile, workstation_spec_version, status, tools]

@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory() as tmp:
     assert proc.returncode in (0, 2)
     data = json.loads(report.read_text(encoding="utf-8"))
     assert data["profile"] == "core"
-    assert data["workstation_spec_version"] == "1.0"
+    assert data["workstation_spec_version"] == "1.1"
     assert set(data["tools"]) == {"git", "gh", "node", "python", "ripgrep"}
     assert data["status"] in {"pass", "nonconformant"}
 
