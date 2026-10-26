@@ -9,7 +9,6 @@ set -euo pipefail
 BOOTSTRAP_LOG="${HOME}/bootstrap_macos_$(date +%Y%m%d_%H%M%S).log"
 WARNINGS=()
 SUCCESSES=()
-ARCH="$(uname -m)"
 MACOS_MAJOR_VERSION="$(sw_vers -productVersion | cut -d. -f1)"
 FATAL_ERROR=0
 INTERACTIVE=1
@@ -26,6 +25,31 @@ for arg in "$@"; do
         --dry-run) DRY_RUN=1 ;;
     esac
 done
+# Run before logging, selection, or any installation steps.
+check_architecture() {
+    local detected
+    detected="$(uname -m)" || return 1
+    # uname reports x86_64 in a Rosetta shell on Apple Silicon.
+    if [[ "$(sysctl -in sysctl.proc_translated 2>/dev/null || true)" == "1" ]]; then
+        echo "ERROR: Apple Silicon detected under Rosetta; rerun in a native ARM64 shell." >&2
+        return 1
+    fi
+    case "$detected" in
+        arm64|aarch64) ARCH=arm64 ;;
+        x86_64|amd64)
+            ARCH=x86_64
+            echo "WARN: macos/x86_64 is legacy; installation is best effort." >&2
+            ;;
+        *)
+            echo "ERROR: Unsupported macos architecture: $detected. See docs/platform-support.md." >&2
+            return 1
+            ;;
+    esac
+    echo "Architecture: macos/$ARCH"
+}
+
+check_architecture || exit 1
+
 if [[ "$DRY_RUN" -eq 1 ]]; then
     BOOTSTRAP_LOG="${TMPDIR:-/tmp}/bootstrap_macos_dry_run_$(date +%Y%m%d_%H%M%S).log"
 fi
@@ -393,9 +417,12 @@ print_summary() {
 
     echo ""
     echo "Successful items:"
-    for item in "${SUCCESSES[@]}"; do
-        echo "  - $item"
-    done
+    # macOS Bash 3.2 treats an empty array as unset under nounset.
+    if [[ ${#SUCCESSES[@]} -gt 0 ]]; then
+        for item in "${SUCCESSES[@]}"; do
+            echo "  - $item"
+        done
+    fi
 
     if [[ ${#WARNINGS[@]} -gt 0 ]]; then
         echo ""

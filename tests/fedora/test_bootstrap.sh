@@ -34,3 +34,5 @@ assert_not_contains 'copilot'
 assert_not_contains 'antigravity'
 
 echo "Fedora bootstrap contract checks passed."
+
+bash tests/architecture/test_bootstrap.sh fedora
