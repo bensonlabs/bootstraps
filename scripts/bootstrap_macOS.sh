@@ -417,9 +417,12 @@ print_summary() {
 
     echo ""
     echo "Successful items:"
-    for item in "${SUCCESSES[@]}"; do
-        echo "  - $item"
-    done
+    # macOS Bash 3.2 treats an empty array as unset under nounset.
+    if [[ ${#SUCCESSES[@]} -gt 0 ]]; then
+        for item in "${SUCCESSES[@]}"; do
+            echo "  - $item"
+        done
+    fi
 
     if [[ ${#WARNINGS[@]} -gt 0 ]]; then
         echo ""
