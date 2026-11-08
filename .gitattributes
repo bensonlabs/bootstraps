@@ -1,0 +1,6 @@
+# The bootstraps page and its tools: LF everywhere, so a pack built on Windows matches the
+# release built in CI byte for byte (tools/pack.py). The rest of the repo keeps git's defaults.
+site/** text=auto eol=lf
+tools/** text=auto eol=lf
+.github/workflows/release.yml text eol=lf
+.github/workflows/site.yml text eol=lf
