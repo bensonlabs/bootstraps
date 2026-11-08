@@ -3,3 +3,5 @@
 *.log
 *.bak
 .DS_Store
+# The page's pack (tools/pack.py)
+dist/

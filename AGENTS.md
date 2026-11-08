@@ -28,3 +28,14 @@ When evolving the bootstrap architecture:
 4. only then change installation behavior.
 
 A passing CI job proves static contracts and supported runner behavior. It does not prove a clean physical machine rebuild.
+
+## The bootstraps page
+
+- `site/index.md` is https://bensonlabs.org/bootstraps/, the address people type to reach these
+  commands. When a bootstrap command changes (a script's URL or tag, its flags, a new platform),
+  update the page in the same pull request.
+- Keep every bootstrap on that one page (owner decision, 2026-11-08: no tiles to click through).
+- Releases named `vX.Y.Z` are the page's (`tools/pack.py`, `.github/workflows/release.yml`). Don't
+  publish GitHub releases for anything else here; the grader uses tags only.
+- `tools/next_version.py`, three functions in `tools/pack.py` and `.github/workflows/release.yml`
+  are shared with bensonlabs/games and bensonlabs/projects; each says so at its top. Change all three.

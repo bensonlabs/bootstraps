@@ -1,0 +1,126 @@
+name: Release
+# Shared by bensonlabs/games, bensonlabs/projects and bensonlabs/bootstraps
+# (.github/workflows/release.yml): change all three. Only the env block below (the component and
+# its release notes) and the lines marked "games only" differ.
+#
+# Every push to main that changes what bensonlabs.org would show publishes the next release
+# (v1.0.3 -> v1.0.4) and asks the blog to pin it; the blog deploys after its own checks.
+# Packs are reproducible, so a push that changes nothing the site shows publishes nothing.
+#
+# Two jobs. "build" tests and packs with no write access (in games it runs npm packages).
+# "publish" holds the write token and the blog's dispatch token, and runs only first-party
+# code. Only main's current head is released: a run started by hand on another branch, or an
+# old run re-run later, publishes nothing, so the site never goes back to older content.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: release
+  cancel-in-progress: false
+defaults:
+  run:
+    shell: bash
+env:
+  COMPONENT: bootstraps
+  NOTES: The bootstraps page, packed for bensonlabs.org/bootstraps/
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Test the tools
+        run: python3 -m unittest discover -s tools -p 'test_*.py'
+      - name: Build and pack everything
+        run: python3 tools/pack.py --version v0.0.0
+      - name: Keep the pack for the publish job
+        uses: actions/upload-artifact@v7
+        with:
+          name: pack
+          path: dist/${{ env.COMPONENT }}-v0.0.0.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Get the pack
+        uses: actions/download-artifact@v8
+        with:
+          name: pack
+          path: dist
+      - name: Is this commit still main's head?
+        id: head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$head" = "$GITHUB_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Not released::This run is for $GITHUB_SHA, but main is at $head now; the run for main's head releases it."
+          fi
+      - name: Is this a new release?
+        id: plan
+        if: steps.head.outputs.current == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          releases=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=1" --jq length)
+          latest=""
+          published=""
+          if [ "$releases" != 0 ]; then
+            latest=$(gh release view --json tagName --jq .tagName)
+            published=$(gh release download "$latest" --pattern '*.sha256' --output - | cut -d' ' -f1)
+            if [ -z "$published" ]; then
+              echo "::error::Couldn't read the sha256 of $latest, so it can't tell whether anything changed."
+              exit 1
+            fi
+          fi
+          version=$(python3 tools/next_version.py --packed "dist/$COMPONENT-v0.0.0.tar.gz" --latest "$latest" --published-sha "$published")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ -z "$version" ]; then echo "Nothing the site shows changed since $latest, so no release."; else echo "New release: $version (after ${latest:-none})."; fi
+      - name: Publish the release
+        if: steps.plan.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          name="$COMPONENT-$VERSION.tar.gz"
+          sha=$(cut -d' ' -f1 "dist/$name.sha256")
+          gh release create "$VERSION" "dist/$name" "dist/$name.sha256" --target "$GITHUB_SHA" \
+            --title "$VERSION" \
+            --notes "$NOTES from $GITHUB_SHA. sha256 of $name: $sha. The blog pins it and deploys after its checks (its Update components workflow)."
+      - name: Tell the blog to publish it
+        if: steps.plan.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ secrets.BLOG_DISPATCH_TOKEN }}
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::notice title=Blog not told::BLOG_DISPATCH_TOKEN isn't set, so the blog picks up $VERSION at its daily check. To publish it now, run the blog's Update components workflow."
+            exit 0
+          fi
+          # Every component at its newest release: if this request replaces one still queued in
+          # the blog, that one's release is pinned too.
+          if ! gh workflow run update-components.yml -R bensonlabs/blog -f component=all -f version=latest; then
+            echo "::error title=Blog not told::The blog refused BLOG_DISPATCH_TOKEN (expired or revoked?). $VERSION is published, and the blog's daily run (13:17 UTC) pins it. To renew the token, see bensonlabs/blog CONTRIBUTING.md, 'The dispatch token'."
+            exit 1
+          fi
+          echo "Asked the blog to pin $VERSION; it deploys after its checks."

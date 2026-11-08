@@ -6,6 +6,21 @@ The goal of this repository is simple: any supported environment should be rebui
 
 This repository serves as the source of truth for my personal development environments across Windows, WSL, and additional platforms supported through bootstrap scripts in scripts/.
 
+## The page at bensonlabs.org/bootstraps
+
+[`site/index.md`](site/index.md) is https://bensonlabs.org/bootstraps/: every bootstrap command on
+one page, so a fresh machine needs one address and no clicks through tiles.
+
+- A push to `main` that changes the page publishes a release (`v1.2.3`, the Release workflow). The
+  blog (bensonlabs/blog) pins it, checks the whole site and deploys it. Until this repo has the
+  `BLOG_DISPATCH_TOKEN` secret, the blog picks a new release up at its daily run (13:17 UTC).
+- When a script's command changes (its URL or tag, its flags, a new platform), change the page in
+  the same pull request.
+- Check it locally: `python3 tools/pack.py` and `python3 -m unittest discover -s tools -p 'test_*.py'`
+  (`py` instead of `python3` on Windows).
+- Releases named `v1.2.3` are the page's. The HW laptop grader keeps its `hw-laptop-grader-v*` tags:
+  don't publish GitHub releases for it, because the page's Release workflow reads the latest release.
+
 ## Objectives
 
 * Rebuild a workstation from scratch with minimal manual configuration
