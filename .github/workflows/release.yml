@@ -1,7 +1,8 @@
 name: Release
 # Shared by bensonlabs/games, bensonlabs/projects and bensonlabs/bootstraps
-# (.github/workflows/release.yml): change all three. Only the env block below (the component and
-# its release notes) and the lines marked "games only" differ.
+# (.github/workflows/release.yml): the copies are identical (tools/check_shared.py checks it), so
+# change all three. What differs per repo comes from the repository's name: the component, its
+# release notes and the steps with an `if:` for games.
 #
 # Every push to main that changes what bensonlabs.org would show publishes the next release
 # (v1.0.3 -> v1.0.4) and asks the blog to pin it; the blog deploys after its own checks.
@@ -23,8 +24,7 @@ defaults:
   run:
     shell: bash
 env:
-  COMPONENT: bootstraps
-  NOTES: The bootstraps page, packed for bensonlabs.org/bootstraps/
+  COMPONENT: ${{ github.event.repository.name }}
 jobs:
   build:
     if: github.ref == 'refs/heads/main'
@@ -36,10 +36,19 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - if: github.event.repository.name == 'games'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: games/dungeon-crawler/package-lock.json
       - name: Test the tools
         run: python3 -m unittest discover -s tools -p 'test_*.py'
       - name: Build and pack everything
         run: python3 tools/pack.py --version v0.0.0
+      - name: Check the dungeon crawler build
+        if: github.event.repository.name == 'games'
+        run: python3 tools/check_dungeon_build.py
       - name: Keep the pack for the publish job
         uses: actions/upload-artifact@v7
         with:
@@ -102,11 +111,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.plan.outputs.version }}
         run: |
+          case "$COMPONENT" in
+            games) notes="All games, packed for bensonlabs.org/projects/games/" ;;
+            projects) notes="Everything under bensonlabs.org/projects/, packed" ;;
+            bootstraps) notes="The bootstraps page, packed for bensonlabs.org/bootstraps/" ;;
+            *) notes="$COMPONENT, packed for bensonlabs.org" ;;
+          esac
           name="$COMPONENT-$VERSION.tar.gz"
           sha=$(cut -d' ' -f1 "dist/$name.sha256")
           gh release create "$VERSION" "dist/$name" "dist/$name.sha256" --target "$GITHUB_SHA" \
             --title "$VERSION" \
-            --notes "$NOTES from $GITHUB_SHA. sha256 of $name: $sha. The blog pins it and deploys after its checks (its Update components workflow)."
+            --notes "$notes from $GITHUB_SHA. sha256 of $name: $sha. The blog pins it and deploys after its checks (its Update components workflow)."
       - name: Tell the blog to publish it
         if: steps.plan.outputs.version != ''
         env:
