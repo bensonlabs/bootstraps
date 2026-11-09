@@ -7,3 +7,8 @@
 dist/
 # Python bytecode from running the tools
 __pycache__/
+
+# Personal Claude Code files (architectureOS)
+.claude/worktrees/
+.claude/settings.local.json
+CLAUDE.local.md

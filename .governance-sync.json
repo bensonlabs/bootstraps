@@ -1,0 +1,19 @@
+{
+  "source_repo": "https://github.com/bensonlabs/architectureOS.git",
+  "synced_commit": "ab98926a7a204062a40342229d3a791b1a15e5b1",
+  "synced_at": "2026-11-08",
+  "vars": {
+    "PROJECT_NAME": "Bootstraps"
+  },
+  "managed": {
+    "CLAUDE.md": "regions",
+    ".gitattributes": "project",
+    ".claude/skills/handoff/SKILL.md": "file",
+    ".claude/skills/kickoff/SKILL.md": "file",
+    ".claude/skills/sync-governance/SKILL.md": "file",
+    ".claude/skills/wrap-up/SKILL.md": "file",
+    "docs/STARTER_DOC_TEMPLATE.md": "file",
+    "docs/decisions/0001-use-decision-records.md": "seed",
+    "docs/decisions/TEMPLATE.md": "file"
+  }
+}
