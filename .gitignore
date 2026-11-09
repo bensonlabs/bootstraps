@@ -5,3 +5,5 @@
 .DS_Store
 # The page's pack (tools/pack.py)
 dist/
+# Python bytecode from running the tools
+__pycache__/

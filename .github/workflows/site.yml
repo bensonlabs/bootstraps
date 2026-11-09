@@ -1,6 +1,7 @@
 name: Site page
 # The bootstraps page (site/index.md, published at bensonlabs.org/bootstraps/) and its tools: the
-# tests and a pack as a release would build it, and a lint of the page's two workflows.
+# tests and a pack as a release would build it, a lint of the page's two workflows, and a check
+# that the files shared with bensonlabs/games and bensonlabs/projects still match.
 on:
   pull_request:
     paths:
@@ -42,3 +43,18 @@ jobs:
           echo "${SHA256}  $RUNNER_TEMP/actionlint.tar.gz" | sha256sum -c -
           tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP" actionlint
           "$RUNNER_TEMP/actionlint" -color .github/workflows/release.yml .github/workflows/site.yml
+
+  shared:
+    name: Shared files match the other repos
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # Each file shared with bensonlabs/games, projects or bootstraps must match the copies there
+      # (on a branch of this branch's name if they have one, else main): tools/check_shared.py.
+      - name: Compare the shared files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/check_shared.py

@@ -37,5 +37,8 @@ A passing CI job proves static contracts and supported runner behavior. It does 
 - Keep every bootstrap on that one page (owner decision, 2026-11-08: no tiles to click through).
 - Releases named `vX.Y.Z` are the page's (`tools/pack.py`, `.github/workflows/release.yml`). Don't
   publish GitHub releases for anything else here; the grader uses tags only.
-- `tools/next_version.py`, three functions in `tools/pack.py` and `.github/workflows/release.yml`
-  are shared with bensonlabs/games and bensonlabs/projects; each says so at its top. Change all three.
+- `.github/workflows/release.yml`, `tools/next_version.py`, `tools/check_shared.py` (and its test)
+  and three functions in `tools/pack.py` are identical in bensonlabs/games and bensonlabs/projects.
+  What differs per repo comes from the repository's name. The Site page workflow fails a pull
+  request when a copy differs (`tools/check_shared.py`). To change one, make the same change in all
+  three repos on one branch name, push those branches, then open the pull requests.
